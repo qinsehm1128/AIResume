@@ -91,14 +91,20 @@ async def update_resume(resume_id: int, request: ResumeUpdate):
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
-    # Save version before update
-    version_count = await ResumeVersion.filter(resume=resume).count()
-    await ResumeVersion.create(
-        resume=resume,
-        resume_data=resume.resume_data,
-        layout_config=resume.layout_config,
-        version_number=version_count + 1,
-    )
+    # 只有当 create_version=True 且有实际内容变化时才创建版本
+    if request.create_version:
+        has_content = (
+            resume.resume_data.get("profile", {}).get("name")
+            or resume.resume_data.get("sections", [])
+        )
+        if has_content:
+            version_count = await ResumeVersion.filter(resume=resume).count()
+            await ResumeVersion.create(
+                resume=resume,
+                resume_data=resume.resume_data,
+                layout_config=resume.layout_config,
+                version_number=version_count + 1,
+            )
 
     # Update resume
     if request.title is not None:
@@ -164,16 +170,7 @@ async def restore_version(resume_id: int, version_id: int):
     if not version:
         raise HTTPException(status_code=404, detail="Version not found")
 
-    # Save current state as new version
-    version_count = await ResumeVersion.filter(resume=resume).count()
-    await ResumeVersion.create(
-        resume=resume,
-        resume_data=resume.resume_data,
-        layout_config=resume.layout_config,
-        version_number=version_count + 1,
-    )
-
-    # Restore
+    # 直接恢复，不再自动创建当前版本的备份
     resume.resume_data = version.resume_data
     resume.layout_config = version.layout_config
     await resume.save()

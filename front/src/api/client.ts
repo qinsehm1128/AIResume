@@ -47,7 +47,7 @@ export const createResume = async (title: string = 'Untitled Resume'): Promise<R
 
 export const updateResume = async (
   id: number,
-  data: Partial<Resume>
+  data: Partial<Resume> & { create_version?: boolean }
 ): Promise<Resume> => {
   const response = await api.put(`/resumes/${id}`, data);
   return response.data;
