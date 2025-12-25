@@ -93,6 +93,8 @@ class ResumeCreate(BaseModel):
     title: str = "Untitled Resume"
     resume_data: Optional[ResumeData] = None
     layout_config: Optional[LayoutConfig] = None
+    template_id: Optional[int] = None  # 使用现有模板
+    generate_template_prompt: Optional[str] = None  # 生成新模板的描述
 
 
 class ResumeUpdate(BaseModel):

@@ -40,8 +40,16 @@ export const getResume = async (id: number): Promise<Resume> => {
   return response.data;
 };
 
-export const createResume = async (title: string = 'Untitled Resume'): Promise<Resume> => {
-  const response = await api.post('/resumes', { title });
+export const createResume = async (options?: {
+  title?: string;
+  template_id?: number;
+  generate_template_prompt?: string;
+}): Promise<Resume> => {
+  const response = await api.post('/resumes', {
+    title: options?.title || 'Untitled Resume',
+    template_id: options?.template_id,
+    generate_template_prompt: options?.generate_template_prompt,
+  });
   return response.data;
 };
 
