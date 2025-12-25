@@ -71,8 +71,11 @@ export interface ResumeVersion {
 
 export interface LLMConfig {
   id: number;
+  name: string;
   base_url: string | null;
   model_name: string;
+  available_models: string[];
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

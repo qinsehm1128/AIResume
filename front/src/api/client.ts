@@ -15,17 +15,76 @@ export const login = async (password: string) => {
 };
 
 // LLM Config
-export const getLLMConfig = async (): Promise<LLMConfig | null> => {
+export const listLLMConfigs = async (): Promise<LLMConfig[]> => {
   const response = await api.get('/llm-config');
   return response.data;
 };
 
+export const getActiveLLMConfig = async (): Promise<LLMConfig | null> => {
+  const response = await api.get('/llm-config/active');
+  return response.data;
+};
+
+export const getLLMConfig = async (configId: number): Promise<LLMConfig> => {
+  const response = await api.get(`/llm-config/${configId}`);
+  return response.data;
+};
+
+export const createLLMConfig = async (config: {
+  name: string;
+  base_url?: string;
+  api_key?: string;
+  model_name: string;
+  available_models?: string[];
+  is_active?: boolean;
+}): Promise<LLMConfig> => {
+  const response = await api.post('/llm-config', config);
+  return response.data;
+};
+
+export const updateLLMConfig = async (
+  configId: number,
+  config: {
+    name?: string;
+    base_url?: string;
+    api_key?: string;
+    model_name?: string;
+    available_models?: string[];
+    is_active?: boolean;
+  }
+): Promise<LLMConfig> => {
+  const response = await api.put(`/llm-config/${configId}`, config);
+  return response.data;
+};
+
+export const deleteLLMConfig = async (configId: number): Promise<void> => {
+  await api.delete(`/llm-config/${configId}`);
+};
+
+export const activateLLMConfig = async (configId: number): Promise<LLMConfig> => {
+  const response = await api.post(`/llm-config/${configId}/activate`);
+  return response.data;
+};
+
+export const setActiveModel = async (configId: number, modelName: string): Promise<LLMConfig> => {
+  const response = await api.post('/llm-config/set-model', {
+    config_id: configId,
+    model_name: modelName,
+  });
+  return response.data;
+};
+
+// Legacy support
 export const saveLLMConfig = async (config: {
   base_url?: string;
   api_key?: string;
   model_name: string;
 }): Promise<LLMConfig> => {
-  const response = await api.post('/llm-config', config);
+  const response = await api.post('/llm-config', {
+    name: '默认配置',
+    ...config,
+    is_active: true,
+  });
   return response.data;
 };
 

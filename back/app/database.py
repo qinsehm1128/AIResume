@@ -23,6 +23,10 @@ async def migrate_database():
     migrations = [
         ("resumes", "template_ast", "TEXT DEFAULT '{}'"),
         ("resumes", "template_id", "INTEGER REFERENCES templates(id)"),
+        # LLM 配置多 API 支持
+        ("llm_configs", "name", "VARCHAR(100) DEFAULT '默认配置'"),
+        ("llm_configs", "available_models", "TEXT DEFAULT '[]'"),
+        ("llm_configs", "is_active", "INTEGER DEFAULT 0"),
     ]
 
     for table, column, column_def in migrations:
