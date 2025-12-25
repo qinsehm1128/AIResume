@@ -123,9 +123,41 @@ GENERATE_TEMPLATE_PROMPT = """You are a professional resume template designer. G
 ```
 
 ## Available Data Paths:
-- profile.name, profile.email, profile.phone, profile.summary
-- sections (array) - 包含 experience, education, project, skill 类型
-- 每个 section 有: id, type, content (包含各类型特定字段)
+
+### Profile Data:
+- {{{{profile.name}}}} - 姓名
+- {{{{profile.email}}}} - 邮箱
+- {{{{profile.phone}}}} - 电话
+- {{{{profile.summary}}}} - 个人简介
+
+### Sections (使用 repeat="sections" 循环):
+在带有 repeat="sections" 的节点内部，使用以下语法访问当前 section:
+
+- {{{{item.type}}}} - section 类型 (experience/education/project/skill)
+- {{{{item.id}}}} - section ID
+
+#### Experience 类型:
+- {{{{item.content.title}}}} - 职位名称
+- {{{{item.content.company}}}} - 公司名称
+- {{{{item.content.start_date}}}} - 开始时间
+- {{{{item.content.end_date}}}} - 结束时间
+- {{{{item.content.description}}}} - 工作描述
+
+#### Education 类型:
+- {{{{item.content.institution}}}} - 学校名称
+- {{{{item.content.degree}}}} - 学位
+- {{{{item.content.field}}}} - 专业
+- {{{{item.content.start_date}}}} - 开始时间
+- {{{{item.content.end_date}}}} - 结束时间
+
+#### Project 类型:
+- {{{{item.content.name}}}} - 项目名称
+- {{{{item.content.description}}}} - 项目描述
+- {{{{item.content.technologies}}}} - 技术栈 (数组)
+
+#### Skill 类型:
+- {{{{item.content.category}}}} - 技能类别
+- {{{{item.content.skills}}}} - 技能列表 (数组)
 
 ## Design Guidelines:
 1. 使用现代、专业的设计风格
@@ -134,6 +166,7 @@ GENERATE_TEMPLATE_PROMPT = """You are a professional resume template designer. G
 4. 考虑打印友好性
 5. 为每个可编辑元素设置 data_path
 6. 使用 {{{{variable}}}} 语法引用数据
+7. 对于 sections 循环，在父节点设置 repeat="sections"，子节点使用 item.xxx 访问数据
 
 User request: {prompt}
 
