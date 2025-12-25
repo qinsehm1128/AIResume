@@ -2,10 +2,76 @@
 AI Template Generator - 使用 AI 生成和解析简历模板 AST
 """
 import json
+import re
 import uuid
 from typing import Optional
 from app.services.llm import get_llm_client
 from langchain_core.messages import HumanMessage, SystemMessage
+
+
+def extract_json_from_response(content: str) -> str:
+    """从 AI 响应中提取 JSON，处理 markdown 代码块"""
+    content = content.strip()
+
+    # 移除 markdown 代码块标记
+    if content.startswith("```"):
+        # 移除开头的 ```json 或 ```
+        content = re.sub(r'^```(?:json)?\s*\n?', '', content)
+    if content.endswith("```"):
+        content = content[:-3]
+
+    content = content.strip()
+
+    # 尝试找到 JSON 对象的开始和结束
+    start_idx = content.find('{')
+    if start_idx == -1:
+        return content
+
+    # 从第一个 { 开始
+    content = content[start_idx:]
+
+    return content
+
+
+def try_fix_truncated_json(content: str) -> Optional[dict]:
+    """尝试修复被截断的 JSON"""
+    # 统计未闭合的括号
+    open_braces = content.count('{') - content.count('}')
+    open_brackets = content.count('[') - content.count(']')
+
+    # 如果括号差距太大，可能是严重截断
+    if open_braces > 20 or open_brackets > 20:
+        return None
+
+    # 检查是否在字符串中间截断（查找未闭合的引号）
+    in_string = False
+    escape_next = False
+    last_char = ''
+
+    for char in content:
+        if escape_next:
+            escape_next = False
+            continue
+        if char == '\\':
+            escape_next = True
+            continue
+        if char == '"' and not escape_next:
+            in_string = not in_string
+        last_char = char
+
+    # 如果在字符串中间截断，尝试闭合
+    fixed = content
+    if in_string:
+        fixed += '"'
+
+    # 闭合括号
+    fixed += ']' * open_brackets
+    fixed += '}' * open_braces
+
+    try:
+        return json.loads(fixed)
+    except json.JSONDecodeError:
+        return None
 
 
 # 使用 Template 字符串避免 format 冲突，或者手动转义
@@ -147,13 +213,17 @@ async def generate_template_ast(prompt: str, base_ast: Optional[dict] = None) ->
         response = await llm.ainvoke(messages)
         content = response.content.strip()
 
-        # Clean JSON
-        if content.startswith("```"):
-            content = content.split("\n", 1)[1] if "\n" in content else content[3:]
-        if content.endswith("```"):
-            content = content[:-3]
+        # 提取 JSON
+        content = extract_json_from_response(content)
 
-        result = json.loads(content.strip())
+        # 尝试直接解析
+        try:
+            result = json.loads(content)
+        except json.JSONDecodeError as e:
+            # 尝试修复截断的 JSON
+            result = try_fix_truncated_json(content)
+            if result is None:
+                return {"error": f"无法解析 AI 返回的 JSON: {str(e)}。响应可能被截断，请尝试简化模板需求。"}
 
         # 确保 AST 中的节点都有唯一 ID
         if "ast" in result and "root" in result["ast"]:
@@ -185,13 +255,17 @@ async def parse_html_to_ast(html_content: str, css_content: str = "") -> dict:
         response = await llm.ainvoke(messages)
         content = response.content.strip()
 
-        # Clean JSON
-        if content.startswith("```"):
-            content = content.split("\n", 1)[1] if "\n" in content else content[3:]
-        if content.endswith("```"):
-            content = content[:-3]
+        # 提取 JSON
+        content = extract_json_from_response(content)
 
-        result = json.loads(content.strip())
+        # 尝试直接解析
+        try:
+            result = json.loads(content)
+        except json.JSONDecodeError as e:
+            # 尝试修复截断的 JSON
+            result = try_fix_truncated_json(content)
+            if result is None:
+                return {"error": f"无法解析 AI 返回的 JSON: {str(e)}。响应可能被截断。"}
 
         # 确保 AST 中的节点都有唯一 ID
         if "ast" in result and "root" in result["ast"]:
