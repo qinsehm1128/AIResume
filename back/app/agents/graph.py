@@ -64,22 +64,22 @@ Focused section: {focused_section}
 IMPORTANT: Use the STAR method (Situation, Task, Action, Result) when improving experience descriptions.
 
 Return a JSON object with:
-- "message": Your helpful response to the user
+- "message": Your helpful response to the user (in Chinese)
 - "updates": A list of updates to apply, each with:
   - "path": JSON path to update (e.g., "profile.summary" or "sections.0.content.description")
   - "value": New value
 
 Example:
 {{
-  "message": "I've improved your job description using the STAR method.",
+  "message": "我已经使用 STAR 法则优化了您的工作描述。",
   "updates": [
-    {{"path": "sections.0.content.description", "value": "Led a team of 5..."}}
+    {{"path": "sections.0.content.description", "value": "带领5人团队..."}}
   ]
 }}
 
 If no changes needed, return empty updates:
 {{
-  "message": "Your response here",
+  "message": "您的回复内容",
   "updates": []
 }}
 
@@ -91,7 +91,7 @@ async def router_node(state: ResumeGraphState) -> ResumeGraphState:
     llm = await get_llm_client()
     if not llm:
         state["intent"] = "general"
-        state["response"] = "Please configure LLM settings first."
+        state["response"] = "请先在设置页面配置 LLM 参数。"
         return state
 
     last_message = state["messages"][-1]["content"] if state["messages"] else ""
@@ -103,13 +103,19 @@ async def router_node(state: ResumeGraphState) -> ResumeGraphState:
         )
     ]
 
-    response = await llm.ainvoke(messages)
-    intent = response.content.strip().lower()
+    try:
+        response = await llm.ainvoke(messages)
+        intent = response.content.strip().lower()
 
-    if intent not in ["layout", "content", "general"]:
-        intent = "general"
+        if intent not in ["layout", "content", "general"]:
+            intent = "general"
 
-    state["intent"] = intent
+        state["intent"] = intent
+    except Exception as e:
+        print(f"Router error: {e}")
+        state["intent"] = "general"
+        state["response"] = f"AI 服务调用失败，请检查 LLM 配置。错误：{str(e)[:100]}"
+
     return state
 
 
@@ -117,7 +123,7 @@ async def layout_node(state: ResumeGraphState) -> ResumeGraphState:
     """Handle layout modification requests"""
     llm = await get_llm_client()
     if not llm:
-        state["response"] = "LLM not configured."
+        state["response"] = "LLM 未配置。"
         return state
 
     last_message = state["messages"][-1]["content"] if state["messages"] else ""
@@ -132,24 +138,27 @@ async def layout_node(state: ResumeGraphState) -> ResumeGraphState:
         ),
     ]
 
-    response = await llm.ainvoke(messages)
-    content = response.content.strip()
-
-    # Clean JSON
-    if content.startswith("```"):
-        content = content.split("\n", 1)[1] if "\n" in content else content[3:]
-    if content.endswith("```"):
-        content = content[:-3]
-
     try:
+        response = await llm.ainvoke(messages)
+        content = response.content.strip()
+
+        # Clean JSON
+        if content.startswith("```"):
+            content = content.split("\n", 1)[1] if "\n" in content else content[3:]
+        if content.endswith("```"):
+            content = content[:-3]
+
         updates = json.loads(content.strip())
         if "error" in updates:
             state["response"] = updates["error"]
         else:
             state["layout_config"].update(updates)
-            state["response"] = f"Layout updated: {', '.join(updates.keys())}"
+            state["response"] = f"布局已更新：{', '.join(updates.keys())}"
     except json.JSONDecodeError:
-        state["response"] = "I couldn't parse the layout changes. Please try again."
+        state["response"] = "无法解析布局更改，请重试。"
+    except Exception as e:
+        print(f"Layout error: {e}")
+        state["response"] = f"布局更新失败：{str(e)[:100]}"
 
     return state
 
@@ -158,35 +167,35 @@ async def content_node(state: ResumeGraphState) -> ResumeGraphState:
     """Handle content modification requests"""
     llm = await get_llm_client()
     if not llm:
-        state["response"] = "LLM not configured."
+        state["response"] = "LLM 未配置。"
         return state
 
     last_message = state["messages"][-1]["content"] if state["messages"] else ""
     focused = state["ui_context"].get("focused_section_id", "none")
 
     messages = [
-        SystemMessage(content="You are a professional resume editor. Output only valid JSON."),
+        SystemMessage(content="You are a professional resume editor. Output only valid JSON. Respond in Chinese."),
         HumanMessage(
             content=CONTENT_PROMPT.format(
-                resume_data=json.dumps(state["current_resume_data"], indent=2),
+                resume_data=json.dumps(state["current_resume_data"], indent=2, ensure_ascii=False),
                 message=last_message,
                 focused_section=focused,
             )
         ),
     ]
 
-    response = await llm.ainvoke(messages)
-    content = response.content.strip()
-
-    # Clean JSON
-    if content.startswith("```"):
-        content = content.split("\n", 1)[1] if "\n" in content else content[3:]
-    if content.endswith("```"):
-        content = content[:-3]
-
     try:
+        response = await llm.ainvoke(messages)
+        content = response.content.strip()
+
+        # Clean JSON
+        if content.startswith("```"):
+            content = content.split("\n", 1)[1] if "\n" in content else content[3:]
+        if content.endswith("```"):
+            content = content[:-3]
+
         result = json.loads(content.strip())
-        state["response"] = result.get("message", "Content updated.")
+        state["response"] = result.get("message", "内容已更新。")
 
         # Apply updates
         for update in result.get("updates", []):
@@ -196,7 +205,10 @@ async def content_node(state: ResumeGraphState) -> ResumeGraphState:
                 _apply_json_path(state["current_resume_data"], path, value)
 
     except json.JSONDecodeError:
-        state["response"] = "I couldn't process the content changes. Please try again."
+        state["response"] = "无法处理内容更改，请重试。"
+    except Exception as e:
+        print(f"Content error: {e}")
+        state["response"] = f"内容更新失败：{str(e)[:100]}"
 
     return state
 
@@ -205,7 +217,7 @@ async def general_node(state: ResumeGraphState) -> ResumeGraphState:
     """Handle general queries"""
     llm = await get_llm_client()
     if not llm:
-        state["response"] = "Hello! Please configure LLM settings to start editing your resume."
+        state["response"] = "您好！请先在设置页面配置 LLM 参数后，即可开始编辑简历。"
         return state
 
     last_message = state["messages"][-1]["content"] if state["messages"] else ""
@@ -214,13 +226,18 @@ async def general_node(state: ResumeGraphState) -> ResumeGraphState:
         SystemMessage(
             content="""You are a helpful resume editor assistant.
             Help users with their resume-related questions.
-            Be concise and professional."""
+            Be concise and professional.
+            Always respond in Chinese."""
         ),
         HumanMessage(content=last_message),
     ]
 
-    response = await llm.ainvoke(messages)
-    state["response"] = response.content
+    try:
+        response = await llm.ainvoke(messages)
+        state["response"] = response.content
+    except Exception as e:
+        print(f"General error: {e}")
+        state["response"] = f"AI 服务调用失败：{str(e)[:100]}"
 
     return state
 
@@ -326,15 +343,26 @@ async def process_message(
     }
 
     config = {"configurable": {"thread_id": thread_id}}
-    result = await graph.ainvoke(state, config)
 
-    # Add assistant response to messages
-    result["messages"].append({"role": "assistant", "content": result["response"]})
+    try:
+        result = await graph.ainvoke(state, config)
 
-    return {
-        "message": result["response"],
-        "resume_data": result["current_resume_data"],
-        "layout_config": result["layout_config"],
-        "messages": result["messages"],
-        "intent": result["intent"],
-    }
+        # Add assistant response to messages
+        result["messages"].append({"role": "assistant", "content": result["response"]})
+
+        return {
+            "message": result["response"],
+            "resume_data": result["current_resume_data"],
+            "layout_config": result["layout_config"],
+            "messages": result["messages"],
+            "intent": result["intent"],
+        }
+    except Exception as e:
+        print(f"Graph execution error: {e}")
+        return {
+            "message": f"处理消息时出错：{str(e)[:100]}",
+            "resume_data": resume_data,
+            "layout_config": layout_config,
+            "messages": new_messages + [{"role": "assistant", "content": f"处理消息时出错：{str(e)[:100]}"}],
+            "intent": "error",
+        }
