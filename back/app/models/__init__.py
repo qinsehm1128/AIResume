@@ -1,1 +1,1 @@
-from app.models.models import Resume, ResumeVersion, LLMConfig
+from app.models.models import Resume, ResumeVersion, LLMConfig, Template

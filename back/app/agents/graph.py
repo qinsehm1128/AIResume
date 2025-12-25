@@ -12,6 +12,8 @@ class ResumeGraphState(TypedDict):
     current_resume_data: dict
     layout_config: dict
     ui_context: dict
+    drag_context: dict | None
+    edit_mode: str
     intent: str
     response: str
 
@@ -22,35 +24,80 @@ ROUTER_PROMPT = """You are an intent classifier for a resume editor AI.
 Analyze the user's message and classify their intent into one of these categories:
 - "layout": User wants to change visual appearance (colors, fonts, layout, theme, spacing)
 - "content": User wants to modify text content (add, edit, polish, translate, rewrite experiences)
+- "template": User wants to modify template structure or AST
 - "general": General questions or greetings
 
 User message: {message}
 
 Current focused section: {focused_section}
+Current edit mode: {edit_mode}
+Dragged node: {drag_context}
 
-Respond with ONLY one word: layout, content, or general"""
+If a node was dragged, pay special attention to what the user wants to do with it.
+If edit_mode is "layout", prefer classifying as "layout".
+If edit_mode is "template", prefer classifying as "template".
+If edit_mode is "content", prefer classifying as "content".
+
+Respond with ONLY one word: layout, content, template, or general"""
 
 
-LAYOUT_PROMPT = """You are a resume layout assistant. Modify the layout configuration based on the user's request.
+LAYOUT_PROMPT = """You are a professional resume layout designer. Modify the layout configuration based on the user's request.
 
 Current layout configuration:
 {layout_config}
 
 User request: {message}
 
-Available layout options:
-- theme: "modern-blue", "classic-black", "minimal-gray", "creative-purple"
+## Available Layout Options:
+
+### Basic Settings:
+- theme: "modern-blue", "classic-black", "minimal-gray", "creative-purple", "elegant-gold", "tech-green"
 - column_layout: "single-column", "two-column-3-7", "two-column-4-6"
 - font_size: "12px", "14px", "16px"
-- primary_color: any valid CSS color
+- primary_color: any valid CSS color (e.g., "#2563eb", "#1a1a1a", "#059669")
 
-Return a JSON object with ONLY the fields that need to change. Example:
-{{"theme": "classic-black", "font_size": "16px"}}
+### Spacing & Typography:
+- section_spacing: "16px", "20px", "24px", "32px" (space between sections)
+- line_height: "1.4", "1.6", "1.8", "2.0"
+- font_family: "system", "serif", "mono"
+- header_font_size: "24px", "28px", "32px", "36px"
+
+### Visual Style:
+- border_style: "none", "solid", "dashed"
+- border_radius: "0px", "4px", "8px", "12px", "16px"
+- background_color: any valid CSS color
+- header_background: "transparent", or any valid CSS color
+- shadow: "none", "sm", "md", "lg", "xl"
+
+### Layout Style:
+- header_alignment: "left", "center", "right"
+- section_style: "card" (with shadow), "flat" (no decoration), "bordered" (with border)
+- accent_style: "border-left", "underline", "background", "none"
+
+## Preset Themes (use these for quick beautification):
+When user asks for "美化" or "beautify", consider applying a complete theme:
+
+1. **Professional Modern** (专业现代风):
+   {{"theme": "modern-blue", "primary_color": "#2563eb", "section_style": "card", "shadow": "md", "border_radius": "12px", "header_alignment": "center", "accent_style": "border-left", "section_spacing": "24px"}}
+
+2. **Classic Elegant** (经典优雅风):
+   {{"theme": "classic-black", "primary_color": "#1f2937", "section_style": "bordered", "shadow": "none", "border_radius": "0px", "header_alignment": "left", "accent_style": "underline", "font_family": "serif", "section_spacing": "20px"}}
+
+3. **Minimalist Clean** (极简清新风):
+   {{"theme": "minimal-gray", "primary_color": "#6b7280", "section_style": "flat", "shadow": "none", "border_radius": "4px", "header_alignment": "left", "accent_style": "none", "section_spacing": "32px", "line_height": "1.8"}}
+
+4. **Creative Bold** (创意大胆风):
+   {{"theme": "creative-purple", "primary_color": "#7c3aed", "section_style": "card", "shadow": "lg", "border_radius": "16px", "header_alignment": "center", "accent_style": "background", "header_font_size": "32px"}}
+
+5. **Tech Modern** (科技现代风):
+   {{"theme": "tech-green", "primary_color": "#059669", "section_style": "card", "shadow": "md", "border_radius": "8px", "header_alignment": "left", "accent_style": "border-left", "font_family": "mono"}}
+
+Return a JSON object with ONLY the fields that need to change.
 
 If the user's request cannot be fulfilled, return:
 {{"error": "explanation"}}
 
-Return ONLY valid JSON."""
+Return ONLY valid JSON. Respond in Chinese when explaining."""
 
 
 CONTENT_PROMPT = """You are a professional resume writer and editor. Help improve the resume content.
@@ -60,8 +107,12 @@ Current resume data:
 
 User request: {message}
 Focused section: {focused_section}
+Target node (dragged by user): {drag_context}
 
-IMPORTANT: Use the STAR method (Situation, Task, Action, Result) when improving experience descriptions.
+IMPORTANT:
+- Use the STAR method (Situation, Task, Action, Result) when improving experience descriptions.
+- If a target node is specified, focus your changes on that specific element.
+- If drag_context has a data_path, use it to identify which part of resume_data to modify.
 
 Return a JSON object with:
 - "message": Your helpful response to the user (in Chinese)
@@ -86,6 +137,40 @@ If no changes needed, return empty updates:
 Return ONLY valid JSON."""
 
 
+TEMPLATE_PROMPT = """You are a template structure editor for resume templates.
+The user wants to modify the template AST structure.
+
+Current dragged node: {drag_context}
+
+User request: {message}
+
+Available operations:
+- Modify node styles (fonts, colors, spacing, etc.)
+- Change node layout (flex, grid, alignment)
+- Update node content template
+- Reorganize node structure
+
+Respond with a JSON object:
+{{
+  "message": "Your response in Chinese explaining what was changed",
+  "ast_updates": [
+    {{
+      "node_id": "the node id to update",
+      "operation": "update_style" | "update_content" | "move" | "delete",
+      "changes": {{...}}  // specific changes to apply
+    }}
+  ]
+}}
+
+If no changes needed or operation is not supported:
+{{
+  "message": "说明为什么无法执行操作",
+  "ast_updates": []
+}}
+
+Return ONLY valid JSON."""
+
+
 async def router_node(state: ResumeGraphState) -> ResumeGraphState:
     """Route user intent to appropriate agent"""
     llm = await get_llm_client()
@@ -96,10 +181,18 @@ async def router_node(state: ResumeGraphState) -> ResumeGraphState:
 
     last_message = state["messages"][-1]["content"] if state["messages"] else ""
     focused = state["ui_context"].get("focused_section_id", "none")
+    edit_mode = state.get("edit_mode", "content")
+    drag_context = state.get("drag_context")
+    drag_str = json.dumps(drag_context, ensure_ascii=False) if drag_context else "none"
 
     messages = [
         HumanMessage(
-            content=ROUTER_PROMPT.format(message=last_message, focused_section=focused)
+            content=ROUTER_PROMPT.format(
+                message=last_message,
+                focused_section=focused,
+                edit_mode=edit_mode,
+                drag_context=drag_str,
+            )
         )
     ]
 
@@ -107,7 +200,7 @@ async def router_node(state: ResumeGraphState) -> ResumeGraphState:
         response = await llm.ainvoke(messages)
         intent = response.content.strip().lower()
 
-        if intent not in ["layout", "content", "general"]:
+        if intent not in ["layout", "content", "template", "general"]:
             intent = "general"
 
         state["intent"] = intent
@@ -172,6 +265,8 @@ async def content_node(state: ResumeGraphState) -> ResumeGraphState:
 
     last_message = state["messages"][-1]["content"] if state["messages"] else ""
     focused = state["ui_context"].get("focused_section_id", "none")
+    drag_context = state.get("drag_context")
+    drag_str = json.dumps(drag_context, ensure_ascii=False) if drag_context else "none"
 
     messages = [
         SystemMessage(content="You are a professional resume editor. Output only valid JSON. Respond in Chinese."),
@@ -180,6 +275,7 @@ async def content_node(state: ResumeGraphState) -> ResumeGraphState:
                 resume_data=json.dumps(state["current_resume_data"], indent=2, ensure_ascii=False),
                 message=last_message,
                 focused_section=focused,
+                drag_context=drag_str,
             )
         ),
     ]
@@ -242,6 +338,55 @@ async def general_node(state: ResumeGraphState) -> ResumeGraphState:
     return state
 
 
+async def template_node(state: ResumeGraphState) -> ResumeGraphState:
+    """Handle template/AST modification requests"""
+    llm = await get_llm_client()
+    if not llm:
+        state["response"] = "LLM 未配置。"
+        return state
+
+    last_message = state["messages"][-1]["content"] if state["messages"] else ""
+    drag_context = state.get("drag_context")
+    drag_str = json.dumps(drag_context, ensure_ascii=False) if drag_context else "none"
+
+    messages = [
+        SystemMessage(content="You are a template structure editor. Output only valid JSON. Respond in Chinese."),
+        HumanMessage(
+            content=TEMPLATE_PROMPT.format(
+                drag_context=drag_str,
+                message=last_message,
+            )
+        ),
+    ]
+
+    try:
+        response = await llm.ainvoke(messages)
+        content = response.content.strip()
+
+        # Clean JSON
+        if content.startswith("```"):
+            content = content.split("\n", 1)[1] if "\n" in content else content[3:]
+        if content.endswith("```"):
+            content = content[:-3]
+
+        result = json.loads(content.strip())
+        state["response"] = result.get("message", "模板结构已更新。")
+
+        # Note: AST updates would be applied here if we had template_ast in state
+        # For now, we just return the message
+        ast_updates = result.get("ast_updates", [])
+        if ast_updates:
+            state["response"] += f"\n\n（检测到 {len(ast_updates)} 个 AST 更新请求，请在模板设计器中应用）"
+
+    except json.JSONDecodeError:
+        state["response"] = "无法处理模板更改，请重试。"
+    except Exception as e:
+        print(f"Template error: {e}")
+        state["response"] = f"模板更新失败：{str(e)[:100]}"
+
+    return state
+
+
 def _apply_json_path(data: dict, path: str, value: Any):
     """Apply a value at a JSON path"""
     parts = path.split(".")
@@ -282,6 +427,7 @@ def create_resume_graph():
     graph.add_node("layout", layout_node)
     graph.add_node("content", content_node)
     graph.add_node("general", general_node)
+    graph.add_node("template", template_node)
 
     # Set entry point
     graph.set_entry_point("router")
@@ -294,6 +440,7 @@ def create_resume_graph():
             "layout": "layout",
             "content": "content",
             "general": "general",
+            "template": "template",
         },
     )
 
@@ -301,6 +448,7 @@ def create_resume_graph():
     graph.add_edge("layout", END)
     graph.add_edge("content", END)
     graph.add_edge("general", END)
+    graph.add_edge("template", END)
 
     # Compile with memory checkpointer
     memory = MemorySaver()
@@ -325,6 +473,8 @@ async def process_message(
     layout_config: dict,
     messages: list,
     focused_section_id: str | None = None,
+    drag_context: dict | None = None,
+    edit_mode: str = "content",
     thread_id: str = "default",
 ) -> dict:
     """Process a user message through the graph"""
@@ -338,6 +488,8 @@ async def process_message(
         "current_resume_data": resume_data,
         "layout_config": layout_config,
         "ui_context": {"focused_section_id": focused_section_id},
+        "drag_context": drag_context,
+        "edit_mode": edit_mode,
         "intent": "",
         "response": "",
     }

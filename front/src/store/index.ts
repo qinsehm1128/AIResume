@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Resume, ChatMessage, LayoutConfig, ResumeData, ProfileData, SectionContent } from '../types';
+import type { Resume, ChatMessage, LayoutConfig, ResumeData, ProfileData, SectionContent, DraggedNode } from '../types';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -25,6 +25,8 @@ interface ResumeState {
   currentResume: Resume | null;
   messages: ChatMessage[];
   focusedSectionId: string | null;
+  draggedNode: DraggedNode | null;
+  editMode: 'content' | 'layout' | 'template';
   setCurrentResume: (resume: Resume | null) => void;
   updateResumeData: (data: ResumeData) => void;
   updateProfile: (profile: Partial<ProfileData>) => void;
@@ -33,13 +35,17 @@ interface ResumeState {
   addMessage: (message: ChatMessage) => void;
   clearMessages: () => void;
   setFocusedSection: (id: string | null) => void;
+  setDraggedNode: (node: DraggedNode | null) => void;
+  setEditMode: (mode: 'content' | 'layout' | 'template') => void;
 }
 
 export const useResumeStore = create<ResumeState>((set) => ({
   currentResume: null,
   messages: [],
   focusedSectionId: null,
-  setCurrentResume: (resume) => set({ currentResume: resume, messages: [] }),
+  draggedNode: null,
+  editMode: 'content',
+  setCurrentResume: (resume) => set({ currentResume: resume, messages: [], draggedNode: null }),
   updateResumeData: (data) =>
     set((state) => ({
       currentResume: state.currentResume
@@ -87,4 +93,6 @@ export const useResumeStore = create<ResumeState>((set) => ({
     })),
   clearMessages: () => set({ messages: [] }),
   setFocusedSection: (id) => set({ focusedSectionId: id }),
+  setDraggedNode: (node) => set({ draggedNode: node }),
+  setEditMode: (mode) => set({ editMode: mode }),
 }));

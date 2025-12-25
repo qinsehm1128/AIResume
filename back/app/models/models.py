@@ -15,11 +15,29 @@ class LLMConfig(models.Model):
         table = "llm_configs"
 
 
+class Template(models.Model):
+    """简历模板"""
+    id = fields.IntField(pk=True)
+    name = fields.CharField(max_length=200)
+    description = fields.TextField(default="")
+    ast = fields.JSONField(default=dict)  # 模板 AST
+    html_content = fields.TextField(default="")  # 原始 HTML（可选）
+    thumbnail = fields.TextField(null=True)  # 缩略图 base64
+    is_system = fields.BooleanField(default=False)  # 是否系统预设模板
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "templates"
+
+
 class Resume(models.Model):
     id = fields.IntField(pk=True)
     title = fields.CharField(max_length=200, default="Untitled Resume")
     resume_data = fields.JSONField(default=dict)
     layout_config = fields.JSONField(default=dict)
+    template_ast = fields.JSONField(default=dict)  # 当前使用的 AST
+    template = fields.ForeignKeyField("models.Template", related_name="resumes", null=True)
     messages = fields.JSONField(default=list)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
