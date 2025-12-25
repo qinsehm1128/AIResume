@@ -76,6 +76,7 @@ class ResumeUpdate(BaseModel):
     title: Optional[str] = None
     resume_data: Optional[ResumeData] = None
     layout_config: Optional[LayoutConfig] = None
+    create_version: bool = True  # 是否创建版本历史
 
 
 class ResumeResponse(BaseModel):

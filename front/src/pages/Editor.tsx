@@ -62,6 +62,8 @@ export default function Editor() {
     try {
       const resumeData = await uploadDocument(file);
       updateResumeData(resumeData);
+      // 解析后立即保存到数据库（首次导入不创建版本）
+      await updateResume(resumeId, { resume_data: resumeData, create_version: false });
     } catch (error) {
       console.error('上传文档失败:', error);
       alert('解析文档失败，请重试');
