@@ -276,15 +276,19 @@ function ASTNodeRenderer({
         // 直接匹配原始类型
         repeatData = allSections.filter((s) => s.type === rawType);
       }
+
+      console.log(`[ASTRenderer] Repeat "${node.repeat}" -> type "${normalizedType || rawType}" -> ${repeatData.length} items`);
     } else if (node.repeat === 'sections') {
       // 直接使用所有 sections
       repeatData = data.sections || [];
+      console.log(`[ASTRenderer] Repeat "sections" -> ${repeatData.length} items`);
     } else {
       repeatData = (getValueByPath(data, node.repeat) as unknown[]) || [];
     }
 
     // 如果有数据则渲染循环
     if (Array.isArray(repeatData) && repeatData.length > 0) {
+      console.log(`[ASTRenderer] Rendering ${repeatData.length} items for "${node.repeat}", node children:`, node.children?.length || 0);
       return (
         <>
           {repeatData.map((item, index) => {
@@ -312,6 +316,9 @@ function ASTNodeRenderer({
           })}
         </>
       );
+    } else {
+      console.log(`[ASTRenderer] No data for repeat "${node.repeat}"`);
+      return null;
     }
   }
 
