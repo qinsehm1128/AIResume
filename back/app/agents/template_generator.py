@@ -130,34 +130,31 @@ GENERATE_TEMPLATE_PROMPT = """You are a professional resume template designer. G
 - {{{{profile.phone}}}} - 电话
 - {{{{profile.summary}}}} - 个人简介
 
-### Sections (使用 repeat="sections" 循环):
-在带有 repeat="sections" 的节点内部，使用以下语法访问当前 section:
+### Sections (按类型分组循环):
+使用 repeat 属性按类型循环不同的 section。推荐为每种类型创建独立的区块：
 
-- {{{{item.type}}}} - section 类型 (experience/education/project/skill)
-- {{{{item.id}}}} - section ID
-
-#### Experience 类型:
+**工作经验区块** - 使用 repeat="sections.experience":
 - {{{{item.content.title}}}} - 职位名称
 - {{{{item.content.company}}}} - 公司名称
 - {{{{item.content.start_date}}}} - 开始时间
 - {{{{item.content.end_date}}}} - 结束时间
 - {{{{item.content.description}}}} - 工作描述
 
-#### Education 类型:
+**教育背景区块** - 使用 repeat="sections.education":
 - {{{{item.content.institution}}}} - 学校名称
 - {{{{item.content.degree}}}} - 学位
 - {{{{item.content.field}}}} - 专业
 - {{{{item.content.start_date}}}} - 开始时间
 - {{{{item.content.end_date}}}} - 结束时间
 
-#### Project 类型:
+**项目经历区块** - 使用 repeat="sections.project":
 - {{{{item.content.name}}}} - 项目名称
 - {{{{item.content.description}}}} - 项目描述
-- {{{{item.content.technologies}}}} - 技术栈 (数组)
+- {{{{item.content.technologies}}}} - 技术栈 (数组，用逗号分隔显示)
 
-#### Skill 类型:
+**专业技能区块** - 使用 repeat="sections.skill":
 - {{{{item.content.category}}}} - 技能类别
-- {{{{item.content.skills}}}} - 技能列表 (数组)
+- {{{{item.content.skills}}}} - 技能列表 (数组，用逗号分隔显示)
 
 ## Design Guidelines:
 1. 使用现代、专业的设计风格
@@ -166,7 +163,12 @@ GENERATE_TEMPLATE_PROMPT = """You are a professional resume template designer. G
 4. 考虑打印友好性
 5. 为每个可编辑元素设置 data_path
 6. 使用 {{{{variable}}}} 语法引用数据
-7. 对于 sections 循环，在父节点设置 repeat="sections"，子节点使用 item.xxx 访问数据
+7. **重要**：为每种 section 类型创建独立的容器节点，分别使用：
+   - repeat="sections.experience" 循环工作经验
+   - repeat="sections.education" 循环教育背景
+   - repeat="sections.project" 循环项目经历
+   - repeat="sections.skill" 循环专业技能
+8. 每个循环容器内使用 item.content.xxx 访问数据
 
 User request: {prompt}
 

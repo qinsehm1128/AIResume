@@ -260,7 +260,7 @@ function ASTNodeRenderer({
 
   // 处理循环渲染
   if (node.repeat) {
-    let repeatData: unknown[];
+    let repeatData: unknown[] = [];
 
     // 检查是否是类型过滤的 repeat，如 "sections.skill", "sections.education", "sections.专业技能"
     const sectionTypeMatch = node.repeat.match(/^sections\.(.+)$/);
@@ -269,6 +269,14 @@ function ASTNodeRenderer({
       const normalizedType = normalizeType(rawType);
       const allSections = data.sections || [];
 
+      console.log('[ASTRenderer] Repeat matching:', {
+        repeatPath: node.repeat,
+        rawType,
+        normalizedType,
+        allSectionsCount: allSections.length,
+        sectionTypes: allSections.map(s => s.type),
+      });
+
       if (normalizedType) {
         // 使用标准化的类型进行匹配
         repeatData = allSections.filter((s) => s.type === normalizedType);
@@ -276,10 +284,16 @@ function ASTNodeRenderer({
         // 直接匹配原始类型
         repeatData = allSections.filter((s) => s.type === rawType);
       }
+
+      console.log('[ASTRenderer] Filtered repeatData:', repeatData.length, 'items');
+    } else if (node.repeat === 'sections') {
+      // 直接使用所有 sections
+      repeatData = data.sections || [];
     } else {
-      repeatData = getValueByPath(data, node.repeat) as unknown[];
+      repeatData = (getValueByPath(data, node.repeat) as unknown[]) || [];
     }
 
+    // 如果有数据则渲染循环
     if (Array.isArray(repeatData) && repeatData.length > 0) {
       return (
         <>
@@ -392,6 +406,19 @@ function ASTNodeRenderer({
   );
 }
 
+// 递归查找所有 repeat 节点
+function findRepeatNodes(node: ASTNode, found: string[] = []): string[] {
+  if (node.repeat) {
+    found.push(node.repeat);
+  }
+  if (node.children) {
+    for (const child of node.children) {
+      findRepeatNodes(child, found);
+    }
+  }
+  return found;
+}
+
 // 主渲染组件
 export default function ASTRenderer({
   node,
@@ -401,6 +428,10 @@ export default function ASTRenderer({
   selectedNodeId,
   editable = true,
 }: Omit<Props, 'repeatItem' | 'repeatIndex'>) {
+  // 调试：显示模板中的 repeat 节点和数据中的 section 类型
+  console.log('[ASTRenderer] Template repeat paths:', findRepeatNodes(node));
+  console.log('[ASTRenderer] Data sections:', data.sections?.map(s => ({ id: s.id, type: s.type })));
+
   return (
     <ASTNodeRenderer
       node={node}
