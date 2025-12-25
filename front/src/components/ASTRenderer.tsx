@@ -12,6 +12,31 @@ interface Props {
   editable?: boolean;
 }
 
+// 类型映射：支持各种命名变体
+const SECTION_TYPE_MAP: Record<string, string[]> = {
+  skill: ['skill', 'skills', '技能', '专业技能'],
+  education: ['education', 'educations', '教育', '教育背景', '学历'],
+  experience: ['experience', 'experiences', '经验', '工作经验', '工作经历'],
+  project: ['project', 'projects', '项目', '项目经历'],
+};
+
+// 根据类型名称获取标准类型
+function normalizeType(typeName: string): string | null {
+  const lowerType = typeName.toLowerCase();
+  for (const [standardType, variants] of Object.entries(SECTION_TYPE_MAP)) {
+    if (variants.some(v => v.toLowerCase() === lowerType)) {
+      return standardType;
+    }
+  }
+  return null;
+}
+
+// HTML 自闭合标签（void elements）
+const VOID_ELEMENTS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+  'link', 'meta', 'param', 'source', 'track', 'wbr'
+]);
+
 // 将 snake_case 转换为 camelCase
 function toCamelCase(str: string): string {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -237,12 +262,20 @@ function ASTNodeRenderer({
   if (node.repeat) {
     let repeatData: unknown[];
 
-    // 检查是否是类型过滤的 repeat，如 "sections.skill", "sections.education"
-    const sectionTypeMatch = node.repeat.match(/^sections\.(\w+)$/);
+    // 检查是否是类型过滤的 repeat，如 "sections.skill", "sections.education", "sections.专业技能"
+    const sectionTypeMatch = node.repeat.match(/^sections\.(.+)$/);
     if (sectionTypeMatch) {
-      const sectionType = sectionTypeMatch[1];
+      const rawType = sectionTypeMatch[1];
+      const normalizedType = normalizeType(rawType);
       const allSections = data.sections || [];
-      repeatData = allSections.filter((s) => s.type === sectionType);
+
+      if (normalizedType) {
+        // 使用标准化的类型进行匹配
+        repeatData = allSections.filter((s) => s.type === normalizedType);
+      } else {
+        // 直接匹配原始类型
+        repeatData = allSections.filter((s) => s.type === rawType);
+      }
     } else {
       repeatData = getValueByPath(data, node.repeat) as unknown[];
     }
@@ -332,6 +365,23 @@ function ASTNodeRenderer({
 
   // 根据标签类型渲染
   const Tag = node.tag as keyof JSX.IntrinsicElements;
+  const isVoidElement = VOID_ELEMENTS.has(node.tag.toLowerCase());
+
+  // 自闭合标签不能有子元素
+  if (isVoidElement) {
+    // 对于 img 标签，需要设置 src 和 alt 属性
+    const voidProps: Record<string, unknown> = { ...nodeProps };
+    if (node.tag.toLowerCase() === 'img') {
+      voidProps.src = resolvedContent || node.styles?.background || '';
+      voidProps.alt = '';
+    }
+    return (
+      <>
+        {dragHint}
+        <Tag {...voidProps} />
+      </>
+    );
+  }
 
   return (
     <Tag {...nodeProps}>

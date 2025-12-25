@@ -17,6 +17,7 @@ export default function Editor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [viewMode, setViewMode] = useState<'template' | 'edit'>('template');
 
   const {
     currentResume,
@@ -182,7 +183,33 @@ export default function Editor() {
       <div className="flex-1 flex overflow-hidden">
         {/* 左侧: 简历预览 */}
         <div className="flex-1 overflow-y-auto p-6">
-          {hasTemplateAst && currentResume.template_ast ? (
+          {/* 视图模式切换 */}
+          {hasTemplateAst && (
+            <div className="max-w-3xl mx-auto mb-4 flex justify-center gap-2">
+              <button
+                onClick={() => setViewMode('template')}
+                className={`px-4 py-2 rounded-lg transition ${
+                  viewMode === 'template'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                模板预览
+              </button>
+              <button
+                onClick={() => setViewMode('edit')}
+                className={`px-4 py-2 rounded-lg transition ${
+                  viewMode === 'edit'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                内容编辑
+              </button>
+            </div>
+          )}
+
+          {hasTemplateAst && viewMode === 'template' && currentResume.template_ast ? (
             <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8">
               <ASTRenderer
                 node={currentResume.template_ast.root}
