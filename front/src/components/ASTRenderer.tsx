@@ -346,31 +346,8 @@ function ASTNodeRenderer({
     nodeProps.onDragEnd = handleDragEnd;
   }
 
-  // 内联元素列表（不能包含 div 子元素）
-  const INLINE_ELEMENTS = new Set(['p', 'span', 'a', 'strong', 'em', 'b', 'i', 'label']);
-  const isInlineElement = INLINE_ELEMENTS.has(node.tag.toLowerCase());
-
-  // 添加拖拽提示（对于内联元素使用 span，否则使用 div）
-  const HintTag = isInlineElement ? 'span' : 'div';
-  const dragHint = isHovered && editable && node.draggable !== false && !isInlineElement && (
-    <HintTag
-      style={{
-        position: 'absolute',
-        top: '-20px',
-        left: '0',
-        fontSize: '10px',
-        background: '#3b82f6',
-        color: 'white',
-        padding: '2px 6px',
-        borderRadius: '4px',
-        pointerEvents: 'none',
-        zIndex: 100,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      拖拽到对话框修改此部分
-    </HintTag>
-  );
+  // 禁用拖拽提示以避免 DOM 嵌套问题
+  const dragHint = null;
 
   // 根据标签类型渲染
   const Tag = node.tag as keyof JSX.IntrinsicElements;
@@ -406,6 +383,19 @@ function ASTNodeRenderer({
   );
 }
 
+// 递归查找所有 repeat 节点
+function findRepeatNodes(node: ASTNode, found: string[] = []): string[] {
+  if (node.repeat) {
+    found.push(node.repeat);
+  }
+  if (node.children) {
+    for (const child of node.children) {
+      findRepeatNodes(child, found);
+    }
+  }
+  return found;
+}
+
 // 主渲染组件
 export default function ASTRenderer({
   node,
@@ -415,6 +405,9 @@ export default function ASTRenderer({
   selectedNodeId,
   editable = true,
 }: Omit<Props, 'repeatItem' | 'repeatIndex'>) {
+  // 调试：显示模板中的 repeat 节点
+  console.log('[ASTRenderer] Template repeat paths:', findRepeatNodes(node));
+
   return (
     <ASTNodeRenderer
       node={node}
