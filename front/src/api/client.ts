@@ -97,6 +97,27 @@ export const uploadDocument = async (file: File): Promise<ResumeData> => {
   return response.data;
 };
 
+// Image Upload
+export interface ImageUploadResponse {
+  success: boolean;
+  filename: string;
+  url: string;
+  base64: string;
+  mime_type: string;
+}
+
+export const uploadImage = async (file: File): Promise<ImageUploadResponse> => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await api.post('/upload/image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
 // Export
 export const exportPDF = async (resumeId: number): Promise<Blob> => {
   const response = await api.get(`/export/${resumeId}/pdf`, {
@@ -153,7 +174,13 @@ export const parseHtmlToAst = async (htmlContent: string, cssContent?: string): 
   return response.data;
 };
 
-// Extended Chat with drag support
+// Extended Chat with drag and image support
+export interface ImageData {
+  base64: string;
+  mime_type: string;
+  url?: string;
+}
+
 export const sendChatMessageWithContext = async (
   resumeId: number,
   message: string,
@@ -161,6 +188,7 @@ export const sendChatMessageWithContext = async (
     focusedSectionId?: string;
     draggedNode?: DraggedNode;
     editMode?: 'content' | 'layout' | 'template';
+    images?: ImageData[];
   }
 ): Promise<ChatResponse> => {
   const response = await api.post('/chat', {
@@ -170,6 +198,7 @@ export const sendChatMessageWithContext = async (
     dragged_node_id: options?.draggedNode?.id,
     dragged_node_path: options?.draggedNode?.path,
     edit_mode: options?.editMode || 'content',
+    images: options?.images || [],
   });
   return response.data;
 };

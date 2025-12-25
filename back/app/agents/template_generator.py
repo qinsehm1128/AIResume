@@ -8,19 +8,20 @@ from app.services.llm import get_llm_client
 from langchain_core.messages import HumanMessage, SystemMessage
 
 
+# 使用 Template 字符串避免 format 冲突，或者手动转义
 GENERATE_TEMPLATE_PROMPT = """You are a professional resume template designer. Generate a beautiful resume template AST (Abstract Syntax Tree) based on the user's request.
 
 ## AST Structure:
 
 ```json
-{
+{{
   "version": "1.0",
-  "root": {
+  "root": {{
     "id": "unique-id",
     "type": "root|header|section|text|list|grid|container|divider",
     "tag": "div|header|section|h1|h2|p|span|ul|li",
     "class_name": "optional-class",
-    "styles": {
+    "styles": {{
       "display": "flex|block|grid",
       "flex_direction": "row|column",
       "justify_content": "center|flex-start|flex-end|space-between",
@@ -37,22 +38,22 @@ GENERATE_TEMPLATE_PROMPT = """You are a professional resume template designer. G
       "color": "#1f2937",
       "text_align": "left|center|right",
       "line_height": "1.6"
-    },
-    "content": "文本内容或变量引用 {{profile.name}}",
-    "data_path": "profile.name",  // 绑定数据路径
-    "children": [],  // 子节点
+    }},
+    "content": "文本内容或变量引用 {{{{profile.name}}}}",
+    "data_path": "profile.name",
+    "children": [],
     "editable": true,
     "draggable": true,
-    "repeat": "sections"  // 循环渲染
-  },
-  "variables": {
+    "repeat": "sections"
+  }},
+  "variables": {{
     "profile.name": "姓名",
     "profile.email": "邮箱",
     "profile.phone": "电话",
     "profile.summary": "个人简介"
-  },
+  }},
   "global_styles": "/* 全局 CSS */"
-}
+}}
 ```
 
 ## Available Data Paths:
@@ -66,7 +67,7 @@ GENERATE_TEMPLATE_PROMPT = """You are a professional resume template designer. G
 3. 使用合适的颜色对比度
 4. 考虑打印友好性
 5. 为每个可编辑元素设置 data_path
-6. 使用 {{variable}} 语法引用数据
+6. 使用 {{{{variable}}}} 语法引用数据
 
 User request: {prompt}
 
@@ -110,7 +111,7 @@ Each node should have:
 ## Important:
 1. Convert CSS properties to snake_case (font-size → font_size)
 2. Identify which parts should bind to resume data and set data_path
-3. Use {{variable}} syntax for dynamic content
+3. Use {{{{variable}}}} syntax for dynamic content
 4. Mark repeating sections with "repeat" property
 
 Return a JSON object with:

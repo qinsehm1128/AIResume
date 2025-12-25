@@ -30,6 +30,11 @@ async def chat(request: ChatRequestWithContext):
             "data_path": request.dragged_node_path,
         }
 
+    # Build image data
+    images = None
+    if request.images:
+        images = [{"base64": img.base64, "mime_type": img.mime_type} for img in request.images]
+
     # Process through LangGraph
     result = await process_message(
         message=request.message,
@@ -39,6 +44,7 @@ async def chat(request: ChatRequestWithContext):
         focused_section_id=request.focused_section_id,
         drag_context=drag_context,
         edit_mode=request.edit_mode,
+        images=images,
         thread_id=f"resume-{request.resume_id}",
     )
 
