@@ -58,6 +58,12 @@ export default function Home() {
           <h1 className="text-3xl font-bold text-gray-800">我的简历</h1>
           <div className="flex gap-4">
             <button
+              onClick={() => navigate('/templates')}
+              className="px-4 py-2 text-blue-600 hover:text-blue-800"
+            >
+              模板设计器
+            </button>
+            <button
               onClick={() => navigate('/settings')}
               className="px-4 py-2 text-gray-600 hover:text-gray-800"
             >

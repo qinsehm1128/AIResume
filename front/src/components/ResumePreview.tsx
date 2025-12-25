@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import type { ResumeData, LayoutConfig, SectionData } from '../types';
+import { useState, useMemo, useCallback } from 'react';
+import type { ResumeData, LayoutConfig, SectionData, DraggedNode } from '../types';
 import { useResumeStore } from '../store';
 
 interface Props {
@@ -107,6 +107,95 @@ function EditableText({
   );
 }
 
+// 可拖拽容器组件
+function DraggableSection({
+  children,
+  section,
+  onSectionClick,
+  sectionStyle,
+}: {
+  children: React.ReactNode;
+  section: SectionData;
+  onSectionClick: (id: string) => void;
+  sectionStyle: React.CSSProperties;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent) => {
+      e.stopPropagation();
+      setIsDragging(true);
+
+      const dragData: DraggedNode = {
+        id: section.id,
+        path: `sections.${section.id}`,
+        type: section.type,
+        content: section.content?.title as string || section.content?.name as string || section.type,
+      };
+
+      e.dataTransfer.setData('application/json', JSON.stringify(dragData));
+      e.dataTransfer.effectAllowed = 'copy';
+    },
+    [section]
+  );
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (
+        (e.target as HTMLElement).tagName !== 'INPUT' &&
+        (e.target as HTMLElement).tagName !== 'TEXTAREA'
+      ) {
+        onSectionClick(section.id);
+      }
+    },
+    [section.id, onSectionClick]
+  );
+
+  return (
+    <div
+      style={{
+        ...sectionStyle,
+        opacity: isDragging ? 0.5 : 1,
+        cursor: 'grab',
+        position: 'relative',
+      }}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onClick={handleClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* 拖拽提示 */}
+      {isHovered && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-24px',
+            left: '0',
+            fontSize: '11px',
+            background: '#3b82f6',
+            color: 'white',
+            padding: '2px 8px',
+            borderRadius: '4px',
+            pointerEvents: 'none',
+            zIndex: 100,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          拖拽到对话框修改此部分
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
 export default function ResumePreview({ data, layout, onSectionClick }: Props) {
   const focusedSectionId = useResumeStore((state) => state.focusedSectionId);
   const updateProfile = useResumeStore((state) => state.updateProfile);
@@ -204,172 +293,153 @@ export default function ResumePreview({ data, layout, onSectionClick }: Props) {
 
     const sectionContainerStyle = getSectionStyle(isActive);
 
-    switch (section.type) {
-      case 'experience':
-        return (
-          <div
-            key={section.id}
-            style={sectionContainerStyle}
-            onClick={(e) => {
-              if ((e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
-                onSectionClick(section.id);
-              }
-            }}
-          >
-            <h3 className="font-semibold" style={{ color: styles.primaryColor }}>
-              <EditableText
-                value={(content.title as string) || ''}
-                onChange={(v) => handleContentChange('title', v)}
-                placeholder="职位名称"
-              />
-              {' - '}
-              <EditableText
-                value={(content.company as string) || ''}
-                onChange={(v) => handleContentChange('company', v)}
-                placeholder="公司名称"
-              />
-            </h3>
-            <p className="text-sm text-gray-500">
-              <EditableText
-                value={(content.start_date as string) || ''}
-                onChange={(v) => handleContentChange('start_date', v)}
-                placeholder="开始时间"
-              />
-              {' - '}
-              <EditableText
-                value={(content.end_date as string) || ''}
-                onChange={(v) => handleContentChange('end_date', v)}
-                placeholder="结束时间"
-              />
-            </p>
-            <div className="mt-2 text-gray-700">
-              <EditableText
-                value={(content.description as string) || ''}
-                onChange={(v) => handleContentChange('description', v)}
-                placeholder="工作描述"
-                multiline
-              />
-            </div>
-          </div>
-        );
-
-      case 'education':
-        return (
-          <div
-            key={section.id}
-            style={sectionContainerStyle}
-            onClick={(e) => {
-              if ((e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
-                onSectionClick(section.id);
-              }
-            }}
-          >
-            <h3 className="font-semibold" style={{ color: styles.primaryColor }}>
-              <EditableText
-                value={(content.degree as string) || ''}
-                onChange={(v) => handleContentChange('degree', v)}
-                placeholder="学位"
-              />
-              {content.field && ' · '}
-              <EditableText
-                value={(content.field as string) || ''}
-                onChange={(v) => handleContentChange('field', v)}
-                placeholder="专业"
-              />
-            </h3>
-            <p className="text-gray-600">
-              <EditableText
-                value={(content.institution as string) || ''}
-                onChange={(v) => handleContentChange('institution', v)}
-                placeholder="学校名称"
-              />
-            </p>
-            <p className="text-sm text-gray-500">
-              <EditableText
-                value={(content.start_date as string) || ''}
-                onChange={(v) => handleContentChange('start_date', v)}
-                placeholder="开始时间"
-              />
-              {' - '}
-              <EditableText
-                value={(content.end_date as string) || ''}
-                onChange={(v) => handleContentChange('end_date', v)}
-                placeholder="结束时间"
-              />
-            </p>
-          </div>
-        );
-
-      case 'project':
-        return (
-          <div
-            key={section.id}
-            style={sectionContainerStyle}
-            onClick={(e) => {
-              if ((e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
-                onSectionClick(section.id);
-              }
-            }}
-          >
-            <h3 className="font-semibold" style={{ color: styles.primaryColor }}>
-              <EditableText
-                value={(content.name as string) || ''}
-                onChange={(v) => handleContentChange('name', v)}
-                placeholder="项目名称"
-              />
-            </h3>
-            <div className="mt-2 text-gray-700">
-              <EditableText
-                value={(content.description as string) || ''}
-                onChange={(v) => handleContentChange('description', v)}
-                placeholder="项目描述"
-                multiline
-              />
-            </div>
-            {content.technologies && (
-              <p className="text-sm text-gray-500 mt-2">
-                技术栈：
+    const renderContent = () => {
+      switch (section.type) {
+        case 'experience':
+          return (
+            <>
+              <h3 className="font-semibold" style={{ color: styles.primaryColor }}>
                 <EditableText
-                  value={(content.technologies as string[])?.join(', ') || ''}
-                  onChange={(v) => handleContentChange('technologies', v.split(',').map(s => s.trim()).filter(Boolean))}
-                  placeholder="技术栈（用逗号分隔）"
+                  value={(content.title as string) || ''}
+                  onChange={(v) => handleContentChange('title', v)}
+                  placeholder="职位名称"
+                />
+                {' - '}
+                <EditableText
+                  value={(content.company as string) || ''}
+                  onChange={(v) => handleContentChange('company', v)}
+                  placeholder="公司名称"
+                />
+              </h3>
+              <p className="text-sm text-gray-500">
+                <EditableText
+                  value={(content.start_date as string) || ''}
+                  onChange={(v) => handleContentChange('start_date', v)}
+                  placeholder="开始时间"
+                />
+                {' - '}
+                <EditableText
+                  value={(content.end_date as string) || ''}
+                  onChange={(v) => handleContentChange('end_date', v)}
+                  placeholder="结束时间"
                 />
               </p>
-            )}
-          </div>
-        );
+              <div className="mt-2 text-gray-700">
+                <EditableText
+                  value={(content.description as string) || ''}
+                  onChange={(v) => handleContentChange('description', v)}
+                  placeholder="工作描述"
+                  multiline
+                />
+              </div>
+            </>
+          );
 
-      case 'skill':
-        return (
-          <div
-            key={section.id}
-            style={sectionContainerStyle}
-            onClick={(e) => {
-              if ((e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
-                onSectionClick(section.id);
-              }
-            }}
-          >
-            <h3 className="font-semibold" style={{ color: styles.primaryColor }}>
-              <EditableText
-                value={(content.category as string) || ''}
-                onChange={(v) => handleContentChange('category', v)}
-                placeholder="技能类别"
-              />
-            </h3>
-            <p className="text-gray-700">
-              <EditableText
-                value={(content.skills as string[])?.join(', ') || ''}
-                onChange={(v) => handleContentChange('skills', v.split(',').map(s => s.trim()).filter(Boolean))}
-                placeholder="技能列表（用逗号分隔）"
-              />
-            </p>
-          </div>
-        );
+        case 'education':
+          return (
+            <>
+              <h3 className="font-semibold" style={{ color: styles.primaryColor }}>
+                <EditableText
+                  value={(content.degree as string) || ''}
+                  onChange={(v) => handleContentChange('degree', v)}
+                  placeholder="学位"
+                />
+                {content.field && ' · '}
+                <EditableText
+                  value={(content.field as string) || ''}
+                  onChange={(v) => handleContentChange('field', v)}
+                  placeholder="专业"
+                />
+              </h3>
+              <p className="text-gray-600">
+                <EditableText
+                  value={(content.institution as string) || ''}
+                  onChange={(v) => handleContentChange('institution', v)}
+                  placeholder="学校名称"
+                />
+              </p>
+              <p className="text-sm text-gray-500">
+                <EditableText
+                  value={(content.start_date as string) || ''}
+                  onChange={(v) => handleContentChange('start_date', v)}
+                  placeholder="开始时间"
+                />
+                {' - '}
+                <EditableText
+                  value={(content.end_date as string) || ''}
+                  onChange={(v) => handleContentChange('end_date', v)}
+                  placeholder="结束时间"
+                />
+              </p>
+            </>
+          );
 
-      default:
-        return null;
-    }
+        case 'project':
+          return (
+            <>
+              <h3 className="font-semibold" style={{ color: styles.primaryColor }}>
+                <EditableText
+                  value={(content.name as string) || ''}
+                  onChange={(v) => handleContentChange('name', v)}
+                  placeholder="项目名称"
+                />
+              </h3>
+              <div className="mt-2 text-gray-700">
+                <EditableText
+                  value={(content.description as string) || ''}
+                  onChange={(v) => handleContentChange('description', v)}
+                  placeholder="项目描述"
+                  multiline
+                />
+              </div>
+              {content.technologies && (
+                <p className="text-sm text-gray-500 mt-2">
+                  技术栈：
+                  <EditableText
+                    value={(content.technologies as string[])?.join(', ') || ''}
+                    onChange={(v) => handleContentChange('technologies', v.split(',').map(s => s.trim()).filter(Boolean))}
+                    placeholder="技术栈（用逗号分隔）"
+                  />
+                </p>
+              )}
+            </>
+          );
+
+        case 'skill':
+          return (
+            <>
+              <h3 className="font-semibold" style={{ color: styles.primaryColor }}>
+                <EditableText
+                  value={(content.category as string) || ''}
+                  onChange={(v) => handleContentChange('category', v)}
+                  placeholder="技能类别"
+                />
+              </h3>
+              <p className="text-gray-700">
+                <EditableText
+                  value={(content.skills as string[])?.join(', ') || ''}
+                  onChange={(v) => handleContentChange('skills', v.split(',').map(s => s.trim()).filter(Boolean))}
+                  placeholder="技能列表（用逗号分隔）"
+                />
+              </p>
+            </>
+          );
+
+        default:
+          return null;
+      }
+    };
+
+    return (
+      <DraggableSection
+        key={section.id}
+        section={section}
+        onSectionClick={onSectionClick}
+        sectionStyle={sectionContainerStyle}
+      >
+        {renderContent()}
+      </DraggableSection>
+    );
   };
 
   // 容器样式

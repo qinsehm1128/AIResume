@@ -9,6 +9,7 @@ from app.api import (
     chat_router,
     upload_router,
     export_router,
+    template_router,
 )
 
 
@@ -44,6 +45,7 @@ app.include_router(resume_router)
 app.include_router(chat_router)
 app.include_router(upload_router)
 app.include_router(export_router)
+app.include_router(template_router)
 
 
 @app.get("/")

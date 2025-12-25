@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Resume, ResumeVersion, LLMConfig, ChatResponse, ResumeData } from '../types';
+import type { Resume, ResumeVersion, LLMConfig, ChatResponse, ResumeData, Template, TemplateAST, DraggedNode } from '../types';
 
 const api = axios.create({
   baseURL: '/api',
@@ -101,6 +101,75 @@ export const uploadDocument = async (file: File): Promise<ResumeData> => {
 export const exportPDF = async (resumeId: number): Promise<Blob> => {
   const response = await api.get(`/export/${resumeId}/pdf`, {
     responseType: 'blob',
+  });
+  return response.data;
+};
+
+// Templates
+export const listTemplates = async (): Promise<Template[]> => {
+  const response = await api.get('/templates');
+  return response.data;
+};
+
+export const getTemplate = async (id: number): Promise<Template> => {
+  const response = await api.get(`/templates/${id}`);
+  return response.data;
+};
+
+export const createTemplate = async (data: {
+  name: string;
+  description?: string;
+  ast?: TemplateAST;
+}): Promise<Template> => {
+  const response = await api.post('/templates', data);
+  return response.data;
+};
+
+export const updateTemplate = async (
+  id: number,
+  data: Partial<Template>
+): Promise<Template> => {
+  const response = await api.put(`/templates/${id}`, data);
+  return response.data;
+};
+
+export const deleteTemplate = async (id: number): Promise<void> => {
+  await api.delete(`/templates/${id}`);
+};
+
+export const generateTemplate = async (prompt: string, baseTemplateId?: number): Promise<Template> => {
+  const response = await api.post('/templates/generate', {
+    prompt,
+    base_template_id: baseTemplateId,
+  });
+  return response.data;
+};
+
+export const parseHtmlToAst = async (htmlContent: string, cssContent?: string): Promise<{ ast: TemplateAST }> => {
+  const response = await api.post('/templates/parse', {
+    html_content: htmlContent,
+    css_content: cssContent || '',
+  });
+  return response.data;
+};
+
+// Extended Chat with drag support
+export const sendChatMessageWithContext = async (
+  resumeId: number,
+  message: string,
+  options?: {
+    focusedSectionId?: string;
+    draggedNode?: DraggedNode;
+    editMode?: 'content' | 'layout' | 'template';
+  }
+): Promise<ChatResponse> => {
+  const response = await api.post('/chat', {
+    resume_id: resumeId,
+    message,
+    focused_section_id: options?.focusedSectionId,
+    dragged_node_id: options?.draggedNode?.id,
+    dragged_node_path: options?.draggedNode?.path,
+    edit_mode: options?.editMode || 'content',
   });
   return response.data;
 };

@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Home from './pages/Home';
 import Settings from './pages/Settings';
 import Editor from './pages/Editor';
+import TemplateDesigner from './pages/TemplateDesigner';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -41,6 +42,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Editor />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/templates"
+          element={
+            <ProtectedRoute>
+              <TemplateDesigner />
             </ProtectedRoute>
           }
         />

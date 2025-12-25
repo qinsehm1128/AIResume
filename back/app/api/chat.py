@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from app.schemas import ChatRequest, ChatResponse, ResumeData, LayoutConfig
+from app.schemas import ChatRequest, ChatRequestWithContext, ChatResponse, ResumeData, LayoutConfig
 from app.models import Resume, ResumeVersion
 from app.agents import process_message
 
@@ -7,7 +7,7 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 @router.post("", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequestWithContext):
     """Process a chat message and update resume"""
     resume = await Resume.get_or_none(id=request.resume_id)
     if not resume:
@@ -22,6 +22,14 @@ async def chat(request: ChatRequest):
         version_number=version_count + 1,
     )
 
+    # Build drag context
+    drag_context = None
+    if request.dragged_node_id:
+        drag_context = {
+            "node_id": request.dragged_node_id,
+            "data_path": request.dragged_node_path,
+        }
+
     # Process through LangGraph
     result = await process_message(
         message=request.message,
@@ -29,6 +37,8 @@ async def chat(request: ChatRequest):
         layout_config=resume.layout_config,
         messages=resume.messages,
         focused_section_id=request.focused_section_id,
+        drag_context=drag_context,
+        edit_mode=request.edit_mode,
         thread_id=f"resume-{request.resume_id}",
     )
 

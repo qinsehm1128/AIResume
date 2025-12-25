@@ -14,4 +14,14 @@ from app.schemas.schemas import (
     ResumeData,
     LayoutConfig,
     ResumeState,
+    # Template AST
+    ASTNodeStyle,
+    ASTNode,
+    TemplateAST,
+    TemplateCreate,
+    TemplateUpdate,
+    TemplateResponse,
+    TemplateGenerateRequest,
+    TemplateParseRequest,
+    ChatRequestWithContext,
 )
