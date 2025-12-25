@@ -21,10 +21,33 @@ export interface ResumeData {
 }
 
 export interface LayoutConfig {
+  // 基础设置
   theme: string;
   column_layout: string;
   font_size: string;
   primary_color: string;
+
+  // 扩展样式 - 间距
+  section_spacing?: string;
+  line_height?: string;
+
+  // 扩展样式 - 边框和圆角
+  border_style?: string;
+  border_radius?: string;
+
+  // 扩展样式 - 背景和阴影
+  background_color?: string;
+  header_background?: string;
+  shadow?: string;
+
+  // 扩展样式 - 字体
+  font_family?: string;
+  header_font_size?: string;
+
+  // 扩展样式 - 布局风格
+  header_alignment?: string;
+  section_style?: string;
+  accent_style?: string;
 }
 
 export interface Resume {

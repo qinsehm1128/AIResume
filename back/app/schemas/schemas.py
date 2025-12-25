@@ -51,10 +51,33 @@ class ResumeData(BaseModel):
 
 
 class LayoutConfig(BaseModel):
+    # 基础设置
     theme: str = "modern-blue"
     column_layout: str = "single-column"
     font_size: str = "14px"
     primary_color: str = "#2563eb"
+
+    # 扩展样式 - 间距
+    section_spacing: str = "24px"  # 模块之间的间距
+    line_height: str = "1.6"  # 行高
+
+    # 扩展样式 - 边框和圆角
+    border_style: str = "none"  # none, solid, dashed
+    border_radius: str = "8px"  # 圆角大小
+
+    # 扩展样式 - 背景和阴影
+    background_color: str = "#ffffff"
+    header_background: str = "transparent"  # 头部背景
+    shadow: str = "lg"  # none, sm, md, lg, xl
+
+    # 扩展样式 - 字体
+    font_family: str = "system"  # system, serif, mono
+    header_font_size: str = "28px"  # 姓名字体大小
+
+    # 扩展样式 - 布局风格
+    header_alignment: str = "center"  # left, center, right
+    section_style: str = "card"  # card, flat, bordered
+    accent_style: str = "border-left"  # border-left, underline, background, none
 
 
 # Resume State for LangGraph

@@ -31,26 +31,63 @@ Current focused section: {focused_section}
 Respond with ONLY one word: layout, content, or general"""
 
 
-LAYOUT_PROMPT = """You are a resume layout assistant. Modify the layout configuration based on the user's request.
+LAYOUT_PROMPT = """You are a professional resume layout designer. Modify the layout configuration based on the user's request.
 
 Current layout configuration:
 {layout_config}
 
 User request: {message}
 
-Available layout options:
-- theme: "modern-blue", "classic-black", "minimal-gray", "creative-purple"
+## Available Layout Options:
+
+### Basic Settings:
+- theme: "modern-blue", "classic-black", "minimal-gray", "creative-purple", "elegant-gold", "tech-green"
 - column_layout: "single-column", "two-column-3-7", "two-column-4-6"
 - font_size: "12px", "14px", "16px"
-- primary_color: any valid CSS color
+- primary_color: any valid CSS color (e.g., "#2563eb", "#1a1a1a", "#059669")
 
-Return a JSON object with ONLY the fields that need to change. Example:
-{{"theme": "classic-black", "font_size": "16px"}}
+### Spacing & Typography:
+- section_spacing: "16px", "20px", "24px", "32px" (space between sections)
+- line_height: "1.4", "1.6", "1.8", "2.0"
+- font_family: "system", "serif", "mono"
+- header_font_size: "24px", "28px", "32px", "36px"
+
+### Visual Style:
+- border_style: "none", "solid", "dashed"
+- border_radius: "0px", "4px", "8px", "12px", "16px"
+- background_color: any valid CSS color
+- header_background: "transparent", or any valid CSS color
+- shadow: "none", "sm", "md", "lg", "xl"
+
+### Layout Style:
+- header_alignment: "left", "center", "right"
+- section_style: "card" (with shadow), "flat" (no decoration), "bordered" (with border)
+- accent_style: "border-left", "underline", "background", "none"
+
+## Preset Themes (use these for quick beautification):
+When user asks for "美化" or "beautify", consider applying a complete theme:
+
+1. **Professional Modern** (专业现代风):
+   {{"theme": "modern-blue", "primary_color": "#2563eb", "section_style": "card", "shadow": "md", "border_radius": "12px", "header_alignment": "center", "accent_style": "border-left", "section_spacing": "24px"}}
+
+2. **Classic Elegant** (经典优雅风):
+   {{"theme": "classic-black", "primary_color": "#1f2937", "section_style": "bordered", "shadow": "none", "border_radius": "0px", "header_alignment": "left", "accent_style": "underline", "font_family": "serif", "section_spacing": "20px"}}
+
+3. **Minimalist Clean** (极简清新风):
+   {{"theme": "minimal-gray", "primary_color": "#6b7280", "section_style": "flat", "shadow": "none", "border_radius": "4px", "header_alignment": "left", "accent_style": "none", "section_spacing": "32px", "line_height": "1.8"}}
+
+4. **Creative Bold** (创意大胆风):
+   {{"theme": "creative-purple", "primary_color": "#7c3aed", "section_style": "card", "shadow": "lg", "border_radius": "16px", "header_alignment": "center", "accent_style": "background", "header_font_size": "32px"}}
+
+5. **Tech Modern** (科技现代风):
+   {{"theme": "tech-green", "primary_color": "#059669", "section_style": "card", "shadow": "md", "border_radius": "8px", "header_alignment": "left", "accent_style": "border-left", "font_family": "mono"}}
+
+Return a JSON object with ONLY the fields that need to change.
 
 If the user's request cannot be fulfilled, return:
 {{"error": "explanation"}}
 
-Return ONLY valid JSON."""
+Return ONLY valid JSON. Respond in Chinese when explaining."""
 
 
 CONTENT_PROMPT = """You are a professional resume writer and editor. Help improve the resume content.
