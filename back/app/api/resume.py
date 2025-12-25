@@ -6,7 +6,8 @@ from app.schemas import (
     ResumeResponse,
     ResumeVersionResponse,
 )
-from app.models import Resume, ResumeVersion
+from app.models import Resume, ResumeVersion, Template
+from app.agents.template_generator import generate_template_ast
 
 router = APIRouter(prefix="/api/resumes", tags=["resumes"])
 
@@ -50,10 +51,35 @@ async def create_resume(request: ResumeCreate):
         }
     )
 
+    # 处理模板
+    template_ast = {}
+    template_id = None
+
+    if request.template_id:
+        # 使用现有模板
+        template = await Template.get_or_none(id=request.template_id)
+        if template:
+            template_ast = template.ast
+            template_id = template.id
+    elif request.generate_template_prompt:
+        # 生成新模板
+        result = await generate_template_ast(request.generate_template_prompt)
+        if "error" not in result and "ast" in result:
+            template_ast = result["ast"]
+            # 可选：保存为新模板
+            new_template = await Template.create(
+                name=result.get("name", "AI 生成模板"),
+                description=result.get("description", request.generate_template_prompt),
+                ast=template_ast,
+            )
+            template_id = new_template.id
+
     resume = await Resume.create(
         title=request.title,
         resume_data=resume_data,
         layout_config=layout_config,
+        template_ast=template_ast,
+        template_id=template_id,
         messages=[],
     )
 
