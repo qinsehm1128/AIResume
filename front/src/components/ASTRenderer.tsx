@@ -269,14 +269,6 @@ function ASTNodeRenderer({
       const normalizedType = normalizeType(rawType);
       const allSections = data.sections || [];
 
-      console.log('[ASTRenderer] Repeat matching:', {
-        repeatPath: node.repeat,
-        rawType,
-        normalizedType,
-        allSectionsCount: allSections.length,
-        sectionTypes: allSections.map(s => s.type),
-      });
-
       if (normalizedType) {
         // 使用标准化的类型进行匹配
         repeatData = allSections.filter((s) => s.type === normalizedType);
@@ -284,8 +276,6 @@ function ASTNodeRenderer({
         // 直接匹配原始类型
         repeatData = allSections.filter((s) => s.type === rawType);
       }
-
-      console.log('[ASTRenderer] Filtered repeatData:', repeatData.length, 'items');
     } else if (node.repeat === 'sections') {
       // 直接使用所有 sections
       repeatData = data.sections || [];
@@ -356,9 +346,14 @@ function ASTNodeRenderer({
     nodeProps.onDragEnd = handleDragEnd;
   }
 
-  // 添加拖拽提示
-  const dragHint = isHovered && editable && node.draggable !== false && (
-    <div
+  // 内联元素列表（不能包含 div 子元素）
+  const INLINE_ELEMENTS = new Set(['p', 'span', 'a', 'strong', 'em', 'b', 'i', 'label']);
+  const isInlineElement = INLINE_ELEMENTS.has(node.tag.toLowerCase());
+
+  // 添加拖拽提示（对于内联元素使用 span，否则使用 div）
+  const HintTag = isInlineElement ? 'span' : 'div';
+  const dragHint = isHovered && editable && node.draggable !== false && !isInlineElement && (
+    <HintTag
       style={{
         position: 'absolute',
         top: '-20px',
@@ -374,7 +369,7 @@ function ASTNodeRenderer({
       }}
     >
       拖拽到对话框修改此部分
-    </div>
+    </HintTag>
   );
 
   // 根据标签类型渲染
@@ -386,7 +381,12 @@ function ASTNodeRenderer({
     // 对于 img 标签，需要设置 src 和 alt 属性
     const voidProps: Record<string, unknown> = { ...nodeProps };
     if (node.tag.toLowerCase() === 'img') {
-      voidProps.src = resolvedContent || node.styles?.background || '';
+      const imgSrc = resolvedContent || node.styles?.background;
+      // 如果没有有效的 src，不渲染 img 标签
+      if (!imgSrc) {
+        return null;
+      }
+      voidProps.src = imgSrc;
       voidProps.alt = '';
     }
     return (
@@ -406,19 +406,6 @@ function ASTNodeRenderer({
   );
 }
 
-// 递归查找所有 repeat 节点
-function findRepeatNodes(node: ASTNode, found: string[] = []): string[] {
-  if (node.repeat) {
-    found.push(node.repeat);
-  }
-  if (node.children) {
-    for (const child of node.children) {
-      findRepeatNodes(child, found);
-    }
-  }
-  return found;
-}
-
 // 主渲染组件
 export default function ASTRenderer({
   node,
@@ -428,10 +415,6 @@ export default function ASTRenderer({
   selectedNodeId,
   editable = true,
 }: Omit<Props, 'repeatItem' | 'repeatIndex'>) {
-  // 调试：显示模板中的 repeat 节点和数据中的 section 类型
-  console.log('[ASTRenderer] Template repeat paths:', findRepeatNodes(node));
-  console.log('[ASTRenderer] Data sections:', data.sections?.map(s => ({ id: s.id, type: s.type })));
-
   return (
     <ASTNodeRenderer
       node={node}
