@@ -32,6 +32,7 @@ export default function ChatPanel({ resumeId }: Props) {
     addMessage,
     updateResumeData,
     updateLayoutConfig,
+    updateTemplateAst,
     setDraggedNode,
     setEditMode,
   } = useResumeStore();
@@ -172,6 +173,9 @@ export default function ChatPanel({ resumeId }: Props) {
       }
       if (response.layout_config) {
         updateLayoutConfig(response.layout_config);
+      }
+      if (response.template_ast) {
+        updateTemplateAst(response.template_ast);
       }
     } catch (error) {
       addMessage({
