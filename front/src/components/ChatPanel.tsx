@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { sendChatMessageWithContext } from '../api/client';
+import { sendChatMessageWithContext, uploadImage, type ImageData } from '../api/client';
 import { useResumeStore } from '../store';
 import type { ChatMessage, DraggedNode } from '../types';
 
@@ -7,12 +7,22 @@ interface Props {
   resumeId: number;
 }
 
+interface PendingImage {
+  file: File;
+  preview: string;
+  base64?: string;
+  mime_type?: string;
+}
+
 export default function ChatPanel({ resumeId }: Props) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const {
     messages,
@@ -39,48 +49,108 @@ export default function ChatPanel({ resumeId }: Props) {
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Check if we're leaving the drop zone entirely
     if (dropZoneRef.current && !dropZoneRef.current.contains(e.relatedTarget as Node)) {
       setIsDragOver(false);
     }
   }, []);
 
   const handleDrop = useCallback(
-    (e: React.DragEvent) => {
+    async (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragOver(false);
 
-      try {
-        const data = e.dataTransfer.getData('application/json');
-        if (data) {
-          const node: DraggedNode = JSON.parse(data);
+      // 检查是否是节点拖拽
+      const jsonData = e.dataTransfer.getData('application/json');
+      if (jsonData) {
+        try {
+          const node: DraggedNode = JSON.parse(jsonData);
           setDraggedNode(node);
+          return;
+        } catch {
+          // 不是 JSON，继续检查是否是图片
         }
-      } catch (error) {
-        console.error('Failed to parse dropped node:', error);
+      }
+
+      // 检查是否是图片文件拖放
+      const files = Array.from(e.dataTransfer.files).filter(file =>
+        file.type.startsWith('image/')
+      );
+      if (files.length > 0) {
+        handleImageFiles(files);
       }
     },
     [setDraggedNode]
   );
+
+  const handleImageFiles = async (files: File[]) => {
+    setUploadingImage(true);
+    try {
+      for (const file of files) {
+        const preview = URL.createObjectURL(file);
+        const result = await uploadImage(file);
+
+        setPendingImages(prev => [...prev, {
+          file,
+          preview,
+          base64: result.base64,
+          mime_type: result.mime_type,
+        }]);
+      }
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      alert('图片上传失败，请重试');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      handleImageFiles(Array.from(files));
+    }
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setPendingImages(prev => {
+      const newImages = [...prev];
+      URL.revokeObjectURL(newImages[index].preview);
+      newImages.splice(index, 1);
+      return newImages;
+    });
+  };
 
   const handleClearDraggedNode = useCallback(() => {
     setDraggedNode(null);
   }, [setDraggedNode]);
 
   const handleSend = async () => {
-    if (!input.trim() || loading) return;
+    if ((!input.trim() && pendingImages.length === 0) || loading) return;
 
-    const userMessage: ChatMessage = { role: 'user', content: input };
+    const userMessage: ChatMessage = {
+      role: 'user',
+      content: input + (pendingImages.length > 0 ? ` [附带${pendingImages.length}张图片]` : ''),
+    };
     addMessage(userMessage);
 
     // Store the context before clearing
     const currentDraggedNode = draggedNode;
     const currentFocusedSectionId = focusedSectionId;
     const currentEditMode = editMode;
+    const currentImages: ImageData[] = pendingImages
+      .filter(img => img.base64 && img.mime_type)
+      .map(img => ({
+        base64: img.base64!,
+        mime_type: img.mime_type!,
+      }));
 
     setInput('');
-    setDraggedNode(null); // Clear after sending
+    setDraggedNode(null);
+    setPendingImages([]);
     setLoading(true);
 
     try {
@@ -88,6 +158,7 @@ export default function ChatPanel({ resumeId }: Props) {
         focusedSectionId: currentFocusedSectionId || undefined,
         draggedNode: currentDraggedNode || undefined,
         editMode: currentEditMode,
+        images: currentImages.length > 0 ? currentImages : undefined,
       });
 
       const assistantMessage: ChatMessage = {
@@ -157,7 +228,6 @@ export default function ChatPanel({ resumeId }: Props) {
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-2">
           <h2 className="font-semibold text-gray-800">AI 助手</h2>
-          {/* 编辑模式切换 */}
           <div className="flex text-xs">
             {(['content', 'layout', 'template'] as const).map((mode) => (
               <button
@@ -175,7 +245,6 @@ export default function ChatPanel({ resumeId }: Props) {
           </div>
         </div>
 
-        {/* 当前上下文提示 */}
         <div className="space-y-1">
           {focusedSectionId && (
             <p className="text-xs text-blue-600">
@@ -192,8 +261,8 @@ export default function ChatPanel({ resumeId }: Props) {
             <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            <p className="font-medium">拖放节点到这里</p>
-            <p className="text-sm">告诉 AI 您想修改哪个部分</p>
+            <p className="font-medium">拖放节点或图片到这里</p>
+            <p className="text-sm">可以拖放简历节点或参考图片</p>
           </div>
         </div>
       )}
@@ -213,11 +282,6 @@ export default function ChatPanel({ resumeId }: Props) {
                 {draggedNode.path && (
                   <p className="text-xs text-purple-600">
                     数据路径：{draggedNode.path}
-                  </p>
-                )}
-                {draggedNode.content && (
-                  <p className="text-xs text-purple-600 truncate max-w-[200px]">
-                    内容：{draggedNode.content}
                   </p>
                 )}
               </div>
@@ -246,8 +310,8 @@ export default function ChatPanel({ resumeId }: Props) {
               <p>"把主题换成经典黑色"</p>
             </div>
             <div className="mt-6 pt-4 border-t border-gray-200">
-              <p className="text-xs text-gray-400 mb-2">提示：从简历预览中拖拽节点到这里</p>
-              <p className="text-xs text-gray-400">可以精确指定 AI 修改的目标</p>
+              <p className="text-xs text-gray-400 mb-2">提示：可以上传图片作为参考</p>
+              <p className="text-xs text-gray-400">或拖拽简历节点指定修改目标</p>
             </div>
           </div>
         )}
@@ -284,17 +348,67 @@ export default function ChatPanel({ resumeId }: Props) {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* 待发送图片预览 */}
+      {pendingImages.length > 0 && (
+        <div className="px-4 py-2 border-t bg-gray-50">
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {pendingImages.map((img, index) => (
+              <div key={index} className="relative flex-shrink-0">
+                <img
+                  src={img.preview}
+                  alt={`待发送图片 ${index + 1}`}
+                  className="h-16 w-16 object-cover rounded-lg border border-gray-200"
+                />
+                <button
+                  onClick={() => removeImage(index)}
+                  className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {uploadingImage && (
+              <div className="h-16 w-16 flex-shrink-0 bg-gray-200 rounded-lg flex items-center justify-center">
+                <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 输入区域 */}
       <div className="p-4 border-t">
         <div className="flex gap-2">
+          {/* 图片上传按钮 */}
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          <button
+            onClick={() => imageInputRef.current?.click()}
+            disabled={loading || uploadingImage}
+            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-50"
+            title="上传图片"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </button>
+
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              draggedNode
-                ? `描述您想对 "${getNodeTypeLabel(draggedNode.type)}" 做的修改...`
-                : '输入消息...'
+              pendingImages.length > 0
+                ? '描述您想让 AI 参考图片做什么...'
+                : draggedNode
+                  ? `描述您想对 "${getNodeTypeLabel(draggedNode.type)}" 做的修改...`
+                  : '输入消息...'
             }
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={2}
@@ -302,7 +416,7 @@ export default function ChatPanel({ resumeId }: Props) {
           />
           <button
             onClick={handleSend}
-            disabled={loading || !input.trim()}
+            disabled={loading || (!input.trim() && pendingImages.length === 0)}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             发送

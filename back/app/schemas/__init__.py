@@ -23,5 +23,7 @@ from app.schemas.schemas import (
     TemplateResponse,
     TemplateGenerateRequest,
     TemplateParseRequest,
+    # Extended Chat
+    ImageData,
     ChatRequestWithContext,
 )

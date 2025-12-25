@@ -247,6 +247,13 @@ class TemplateParseRequest(BaseModel):
 
 
 # Extended Chat Request with drag support
+class ImageData(BaseModel):
+    """图片数据"""
+    base64: str  # base64 编码的图片
+    mime_type: str = "image/jpeg"  # 图片 MIME 类型
+    url: Optional[str] = None  # 可选的图片 URL
+
+
 class ChatRequestWithContext(BaseModel):
     resume_id: int
     message: str
@@ -254,3 +261,4 @@ class ChatRequestWithContext(BaseModel):
     dragged_node_id: Optional[str] = None  # 拖拽的节点 ID
     dragged_node_path: Optional[str] = None  # 拖拽节点的数据路径
     edit_mode: str = "content"  # content, layout, template
+    images: List[ImageData] = Field(default_factory=list)  # 附带的图片

@@ -14,8 +14,25 @@ class ResumeGraphState(TypedDict):
     ui_context: dict
     drag_context: dict | None
     edit_mode: str
+    images: list[dict] | None  # 图片数据列表
     intent: str
     response: str
+
+
+def create_multimodal_content(text: str, images: list[dict] | None = None) -> list[dict] | str:
+    """创建多模态消息内容（支持图片）"""
+    if not images:
+        return text
+
+    content = [{"type": "text", "text": text}]
+    for img in images:
+        content.append({
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:{img['mime_type']};base64,{img['base64']}"
+            }
+        })
+    return content
 
 
 # Prompts
@@ -184,6 +201,10 @@ async def router_node(state: ResumeGraphState) -> ResumeGraphState:
     edit_mode = state.get("edit_mode", "content")
     drag_context = state.get("drag_context")
     drag_str = json.dumps(drag_context, ensure_ascii=False) if drag_context else "none"
+    has_images = bool(state.get("images"))
+
+    # 如果有图片，在提示中提及
+    image_hint = "\n\nNote: User has attached image(s). Consider if they want to use the image as reference for design/layout." if has_images else ""
 
     messages = [
         HumanMessage(
@@ -192,7 +213,7 @@ async def router_node(state: ResumeGraphState) -> ResumeGraphState:
                 focused_section=focused,
                 edit_mode=edit_mode,
                 drag_context=drag_str,
-            )
+            ) + image_hint
         )
     ]
 
@@ -220,15 +241,20 @@ async def layout_node(state: ResumeGraphState) -> ResumeGraphState:
         return state
 
     last_message = state["messages"][-1]["content"] if state["messages"] else ""
+    images = state.get("images")
+
+    prompt_text = LAYOUT_PROMPT.format(
+        layout_config=json.dumps(state["layout_config"], indent=2),
+        message=last_message,
+    )
+
+    # 如果有图片，添加参考提示
+    if images:
+        prompt_text += "\n\n用户附带了参考图片，请根据图片中的设计风格调整布局配置。"
 
     messages = [
         SystemMessage(content="You are a JSON layout configurator. Output only valid JSON."),
-        HumanMessage(
-            content=LAYOUT_PROMPT.format(
-                layout_config=json.dumps(state["layout_config"], indent=2),
-                message=last_message,
-            )
-        ),
+        HumanMessage(content=create_multimodal_content(prompt_text, images)),
     ]
 
     try:
@@ -267,17 +293,18 @@ async def content_node(state: ResumeGraphState) -> ResumeGraphState:
     focused = state["ui_context"].get("focused_section_id", "none")
     drag_context = state.get("drag_context")
     drag_str = json.dumps(drag_context, ensure_ascii=False) if drag_context else "none"
+    images = state.get("images")
+
+    prompt_text = CONTENT_PROMPT.format(
+        resume_data=json.dumps(state["current_resume_data"], indent=2, ensure_ascii=False),
+        message=last_message,
+        focused_section=focused,
+        drag_context=drag_str,
+    )
 
     messages = [
         SystemMessage(content="You are a professional resume editor. Output only valid JSON. Respond in Chinese."),
-        HumanMessage(
-            content=CONTENT_PROMPT.format(
-                resume_data=json.dumps(state["current_resume_data"], indent=2, ensure_ascii=False),
-                message=last_message,
-                focused_section=focused,
-                drag_context=drag_str,
-            )
-        ),
+        HumanMessage(content=create_multimodal_content(prompt_text, images)),
     ]
 
     try:
@@ -475,6 +502,7 @@ async def process_message(
     focused_section_id: str | None = None,
     drag_context: dict | None = None,
     edit_mode: str = "content",
+    images: list[dict] | None = None,
     thread_id: str = "default",
 ) -> dict:
     """Process a user message through the graph"""
@@ -490,6 +518,7 @@ async def process_message(
         "ui_context": {"focused_section_id": focused_section_id},
         "drag_context": drag_context,
         "edit_mode": edit_mode,
+        "images": images,
         "intent": "",
         "response": "",
     }
