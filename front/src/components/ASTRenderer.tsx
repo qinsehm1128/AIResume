@@ -31,6 +31,12 @@ function normalizeType(typeName: string): string | null {
   return null;
 }
 
+// HTML 自闭合标签（void elements）
+const VOID_ELEMENTS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+  'link', 'meta', 'param', 'source', 'track', 'wbr'
+]);
+
 // 将 snake_case 转换为 camelCase
 function toCamelCase(str: string): string {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -359,6 +365,23 @@ function ASTNodeRenderer({
 
   // 根据标签类型渲染
   const Tag = node.tag as keyof JSX.IntrinsicElements;
+  const isVoidElement = VOID_ELEMENTS.has(node.tag.toLowerCase());
+
+  // 自闭合标签不能有子元素
+  if (isVoidElement) {
+    // 对于 img 标签，需要设置 src 和 alt 属性
+    const voidProps: Record<string, unknown> = { ...nodeProps };
+    if (node.tag.toLowerCase() === 'img') {
+      voidProps.src = resolvedContent || node.styles?.background || '';
+      voidProps.alt = '';
+    }
+    return (
+      <>
+        {dragHint}
+        <Tag {...voidProps} />
+      </>
+    );
+  }
 
   return (
     <Tag {...nodeProps}>
