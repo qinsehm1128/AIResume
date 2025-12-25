@@ -55,6 +55,8 @@ export interface Resume {
   title: string;
   resume_data: ResumeData;
   layout_config: LayoutConfig;
+  template_ast?: TemplateAST | null;  // 模板 AST
+  template_id?: number | null;  // 关联的模板 ID
   created_at: string;
   updated_at: string;
 }

@@ -12,21 +12,25 @@ from app.agents.template_generator import generate_template_ast
 router = APIRouter(prefix="/api/resumes", tags=["resumes"])
 
 
+def make_resume_response(resume: Resume) -> ResumeResponse:
+    """Helper to create ResumeResponse with all fields"""
+    return ResumeResponse(
+        id=resume.id,
+        title=resume.title,
+        resume_data=resume.resume_data,
+        layout_config=resume.layout_config,
+        template_ast=resume.template_ast if resume.template_ast else None,
+        template_id=resume.template_id if hasattr(resume, 'template_id') else None,
+        created_at=resume.created_at,
+        updated_at=resume.updated_at,
+    )
+
+
 @router.get("", response_model=List[ResumeResponse])
 async def list_resumes():
     """List all resumes"""
     resumes = await Resume.all().order_by("-updated_at")
-    return [
-        ResumeResponse(
-            id=r.id,
-            title=r.title,
-            resume_data=r.resume_data,
-            layout_config=r.layout_config,
-            created_at=r.created_at,
-            updated_at=r.updated_at,
-        )
-        for r in resumes
-    ]
+    return [make_resume_response(r) for r in resumes]
 
 
 @router.post("", response_model=ResumeResponse)
@@ -83,14 +87,7 @@ async def create_resume(request: ResumeCreate):
         messages=[],
     )
 
-    return ResumeResponse(
-        id=resume.id,
-        title=resume.title,
-        resume_data=resume.resume_data,
-        layout_config=resume.layout_config,
-        created_at=resume.created_at,
-        updated_at=resume.updated_at,
-    )
+    return make_resume_response(resume)
 
 
 @router.get("/{resume_id}", response_model=ResumeResponse)
@@ -100,14 +97,7 @@ async def get_resume(resume_id: int):
     if not resume:
         raise HTTPException(status_code=404, detail="Resume not found")
 
-    return ResumeResponse(
-        id=resume.id,
-        title=resume.title,
-        resume_data=resume.resume_data,
-        layout_config=resume.layout_config,
-        created_at=resume.created_at,
-        updated_at=resume.updated_at,
-    )
+    return make_resume_response(resume)
 
 
 @router.put("/{resume_id}", response_model=ResumeResponse)
@@ -142,14 +132,7 @@ async def update_resume(resume_id: int, request: ResumeUpdate):
 
     await resume.save()
 
-    return ResumeResponse(
-        id=resume.id,
-        title=resume.title,
-        resume_data=resume.resume_data,
-        layout_config=resume.layout_config,
-        created_at=resume.created_at,
-        updated_at=resume.updated_at,
-    )
+    return make_resume_response(resume)
 
 
 @router.delete("/{resume_id}")
@@ -201,11 +184,4 @@ async def restore_version(resume_id: int, version_id: int):
     resume.layout_config = version.layout_config
     await resume.save()
 
-    return ResumeResponse(
-        id=resume.id,
-        title=resume.title,
-        resume_data=resume.resume_data,
-        layout_config=resume.layout_config,
-        created_at=resume.created_at,
-        updated_at=resume.updated_at,
-    )
+    return make_resume_response(resume)

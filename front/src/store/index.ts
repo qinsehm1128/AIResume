@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Resume, ChatMessage, LayoutConfig, ResumeData, ProfileData, SectionContent, DraggedNode } from '../types';
+import type { Resume, ChatMessage, LayoutConfig, ResumeData, ProfileData, SectionContent, DraggedNode, TemplateAST } from '../types';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -32,6 +32,7 @@ interface ResumeState {
   updateProfile: (profile: Partial<ProfileData>) => void;
   updateSection: (sectionId: string, content: Partial<SectionContent>) => void;
   updateLayoutConfig: (config: LayoutConfig) => void;
+  updateTemplateAst: (ast: TemplateAST | null) => void;
   addMessage: (message: ChatMessage) => void;
   clearMessages: () => void;
   setFocusedSection: (id: string | null) => void;
@@ -85,6 +86,12 @@ export const useResumeStore = create<ResumeState>((set) => ({
     set((state) => ({
       currentResume: state.currentResume
         ? { ...state.currentResume, layout_config: config }
+        : null,
+    })),
+  updateTemplateAst: (ast) =>
+    set((state) => ({
+      currentResume: state.currentResume
+        ? { ...state.currentResume, template_ast: ast }
         : null,
     })),
   addMessage: (message) =>

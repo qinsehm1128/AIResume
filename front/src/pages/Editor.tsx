@@ -3,8 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getResume, updateResume, uploadDocument, exportPDF } from '../api/client';
 import { useResumeStore } from '../store';
 import ResumePreview from '../components/ResumePreview';
+import ASTRenderer from '../components/ASTRenderer';
 import ChatPanel from '../components/ChatPanel';
 import VersionHistory from '../components/VersionHistory';
+import type { DraggedNode } from '../types';
 
 export default function Editor() {
   const { id } = useParams<{ id: string }>();
@@ -21,7 +23,12 @@ export default function Editor() {
     setCurrentResume,
     setFocusedSection,
     updateResumeData,
+    setDraggedNode,
+    focusedSectionId,
   } = useResumeStore();
+
+  // 检查是否有模板 AST
+  const hasTemplateAst = currentResume?.template_ast?.root != null;
 
   useEffect(() => {
     loadResume();
@@ -175,11 +182,24 @@ export default function Editor() {
       <div className="flex-1 flex overflow-hidden">
         {/* 左侧: 简历预览 */}
         <div className="flex-1 overflow-y-auto p-6">
-          <ResumePreview
-            data={currentResume.resume_data}
-            layout={currentResume.layout_config}
-            onSectionClick={setFocusedSection}
-          />
+          {hasTemplateAst && currentResume.template_ast ? (
+            <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8">
+              <ASTRenderer
+                node={currentResume.template_ast.root}
+                data={currentResume.resume_data}
+                onNodeDragStart={(node: DraggedNode) => setDraggedNode(node)}
+                onNodeClick={(nodeId: string) => setFocusedSection(nodeId)}
+                selectedNodeId={focusedSectionId || undefined}
+                editable={true}
+              />
+            </div>
+          ) : (
+            <ResumePreview
+              data={currentResume.resume_data}
+              layout={currentResume.layout_config}
+              onSectionClick={setFocusedSection}
+            />
+          )}
         </div>
 
         {/* 右侧: AI 对话面板 */}

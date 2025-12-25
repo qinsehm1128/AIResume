@@ -109,6 +109,8 @@ class ResumeResponse(BaseModel):
     title: str
     resume_data: Dict[str, Any]
     layout_config: Dict[str, Any]
+    template_ast: Optional[Dict[str, Any]] = None  # 模板 AST
+    template_id: Optional[int] = None  # 关联的模板 ID
     created_at: datetime
     updated_at: datetime
 
