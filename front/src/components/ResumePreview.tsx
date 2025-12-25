@@ -35,12 +35,12 @@ export default function ResumePreview({ data, layout, onSectionClick }: Props) {
             onClick={() => onSectionClick(section.id)}
           >
             <h3 className="font-semibold" style={{ color: primaryColor }}>
-              {(content.title as string) || 'Job Title'} - {(content.company as string) || 'Company'}
+              {(content.title as string) || '职位名称'} - {(content.company as string) || '公司名称'}
             </h3>
             <p className="text-sm text-gray-500">
-              {(content.start_date as string) || 'Start'} - {(content.end_date as string) || 'End'}
+              {(content.start_date as string) || '开始时间'} - {(content.end_date as string) || '结束时间'}
             </p>
-            <p className="mt-2 text-gray-700">{(content.description as string) || 'Description'}</p>
+            <p className="mt-2 text-gray-700">{(content.description as string) || '工作描述'}</p>
           </div>
         );
 
@@ -52,11 +52,11 @@ export default function ResumePreview({ data, layout, onSectionClick }: Props) {
             onClick={() => onSectionClick(section.id)}
           >
             <h3 className="font-semibold" style={{ color: primaryColor }}>
-              {(content.degree as string) || 'Degree'} in {(content.field as string) || 'Field'}
+              {(content.degree as string) || '学位'} · {(content.field as string) || '专业'}
             </h3>
-            <p className="text-gray-600">{(content.institution as string) || 'Institution'}</p>
+            <p className="text-gray-600">{(content.institution as string) || '学校名称'}</p>
             <p className="text-sm text-gray-500">
-              {(content.start_date as string) || 'Start'} - {(content.end_date as string) || 'End'}
+              {(content.start_date as string) || '开始时间'} - {(content.end_date as string) || '结束时间'}
             </p>
           </div>
         );
@@ -69,12 +69,12 @@ export default function ResumePreview({ data, layout, onSectionClick }: Props) {
             onClick={() => onSectionClick(section.id)}
           >
             <h3 className="font-semibold" style={{ color: primaryColor }}>
-              {(content.name as string) || 'Project Name'}
+              {(content.name as string) || '项目名称'}
             </h3>
-            <p className="mt-2 text-gray-700">{(content.description as string) || 'Description'}</p>
+            <p className="mt-2 text-gray-700">{(content.description as string) || '项目描述'}</p>
             {content.technologies && (
               <p className="text-sm text-gray-500 mt-2">
-                Tech: {(content.technologies as string[]).join(', ')}
+                技术栈：{(content.technologies as string[]).join(', ')}
               </p>
             )}
           </div>
@@ -88,10 +88,10 @@ export default function ResumePreview({ data, layout, onSectionClick }: Props) {
             onClick={() => onSectionClick(section.id)}
           >
             <h3 className="font-semibold" style={{ color: primaryColor }}>
-              {(content.category as string) || 'Category'}
+              {(content.category as string) || '技能类别'}
             </h3>
             <p className="text-gray-700">
-              {(content.skills as string[])?.join(', ') || 'Skills'}
+              {(content.skills as string[])?.join(', ') || '技能列表'}
             </p>
           </div>
         );
@@ -106,10 +106,10 @@ export default function ResumePreview({ data, layout, onSectionClick }: Props) {
       className="bg-white shadow-lg rounded-lg p-8 max-w-2xl mx-auto"
       style={{ fontSize: layout.font_size }}
     >
-      {/* Header */}
+      {/* 头部信息 */}
       <div className="text-center border-b-2 pb-6 mb-6" style={{ borderColor: primaryColor }}>
         <h1 className="text-3xl font-bold" style={{ color: primaryColor }}>
-          {data.profile.name || 'Your Name'}
+          {data.profile.name || '您的姓名'}
         </h1>
         <div className="text-gray-600 mt-2">
           {data.profile.email && <span>{data.profile.email}</span>}
@@ -118,7 +118,7 @@ export default function ResumePreview({ data, layout, onSectionClick }: Props) {
         </div>
       </div>
 
-      {/* Summary */}
+      {/* 个人简介 */}
       {data.profile.summary && (
         <div
           className="mb-6 p-4 bg-gray-50 border-l-4"
@@ -128,14 +128,14 @@ export default function ResumePreview({ data, layout, onSectionClick }: Props) {
         </div>
       )}
 
-      {/* Sections */}
+      {/* 各个模块 */}
       <div className="space-y-4">
         {data.sections.map(renderSection)}
       </div>
 
       {data.sections.length === 0 && (
         <div className="text-center text-gray-400 py-8">
-          <p>No sections yet. Upload a resume or ask AI to help create content.</p>
+          <p>暂无内容。上传简历文档或让 AI 帮你创建内容。</p>
         </div>
       )}
     </div>

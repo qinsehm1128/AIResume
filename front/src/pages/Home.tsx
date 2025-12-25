@@ -19,7 +19,7 @@ export default function Home() {
       const data = await listResumes();
       setResumes(data);
     } catch (error) {
-      console.error('Failed to load resumes:', error);
+      console.error('加载简历失败:', error);
     } finally {
       setLoading(false);
     }
@@ -30,19 +30,19 @@ export default function Home() {
       const resume = await createResume();
       navigate(`/editor/${resume.id}`);
     } catch (error) {
-      console.error('Failed to create resume:', error);
+      console.error('创建简历失败:', error);
     }
   };
 
   const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Are you sure you want to delete this resume?')) return;
+    if (!confirm('确定要删除这份简历吗？')) return;
 
     try {
       await deleteResume(id);
       setResumes(resumes.filter((r) => r.id !== id));
     } catch (error) {
-      console.error('Failed to delete resume:', error);
+      console.error('删除简历失败:', error);
     }
   };
 
@@ -55,19 +55,19 @@ export default function Home() {
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">My Resumes</h1>
+          <h1 className="text-3xl font-bold text-gray-800">我的简历</h1>
           <div className="flex gap-4">
             <button
               onClick={() => navigate('/settings')}
               className="px-4 py-2 text-gray-600 hover:text-gray-800"
             >
-              Settings
+              设置
             </button>
             <button
               onClick={handleLogout}
               className="px-4 py-2 text-red-600 hover:text-red-800"
             >
-              Logout
+              退出登录
             </button>
           </div>
         </div>
@@ -90,12 +90,12 @@ export default function Home() {
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            <span>Create New Resume</span>
+            <span>创建新简历</span>
           </button>
 
           {loading && (
             <div className="h-48 flex items-center justify-center">
-              <span className="text-gray-500">Loading...</span>
+              <span className="text-gray-500">加载中...</span>
             </div>
           )}
 
@@ -109,10 +109,10 @@ export default function Home() {
                 {resume.title}
               </h3>
               <p className="text-sm text-gray-500">
-                {resume.resume_data.profile?.name || 'No name'}
+                {resume.resume_data.profile?.name || '未填写姓名'}
               </p>
               <p className="text-xs text-gray-400 mt-4">
-                Updated: {new Date(resume.updated_at).toLocaleDateString()}
+                更新于：{new Date(resume.updated_at).toLocaleDateString('zh-CN')}
               </p>
               <button
                 onClick={(e) => handleDelete(resume.id, e)}

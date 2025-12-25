@@ -19,7 +19,7 @@ export default function VersionHistory({ resumeId }: Props) {
       const data = await listVersions(resumeId);
       setVersions(data);
     } catch (error) {
-      console.error('Failed to load versions:', error);
+      console.error('加载版本历史失败:', error);
     } finally {
       setLoading(false);
     }
@@ -32,7 +32,7 @@ export default function VersionHistory({ resumeId }: Props) {
   }, [open, resumeId]);
 
   const handleRestore = async (versionId: number) => {
-    if (!confirm('Restore this version? Current state will be saved as a new version.')) {
+    if (!confirm('确定要恢复到此版本吗？当前状态将保存为新版本。')) {
       return;
     }
 
@@ -41,7 +41,7 @@ export default function VersionHistory({ resumeId }: Props) {
       setCurrentResume(resume);
       setOpen(false);
     } catch (error) {
-      console.error('Failed to restore version:', error);
+      console.error('恢复版本失败:', error);
     }
   };
 
@@ -64,22 +64,22 @@ export default function VersionHistory({ resumeId }: Props) {
             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
           />
         </svg>
-        History
+        历史版本
       </button>
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg z-10 border">
           <div className="p-4 border-b">
-            <h3 className="font-semibold text-gray-800">Version History</h3>
+            <h3 className="font-semibold text-gray-800">版本历史</h3>
           </div>
 
           <div className="max-h-96 overflow-y-auto">
             {loading && (
-              <div className="p-4 text-center text-gray-500">Loading...</div>
+              <div className="p-4 text-center text-gray-500">加载中...</div>
             )}
 
             {!loading && versions.length === 0 && (
-              <div className="p-4 text-center text-gray-500">No versions yet</div>
+              <div className="p-4 text-center text-gray-500">暂无历史版本</div>
             )}
 
             {versions.map((version) => (
@@ -89,17 +89,17 @@ export default function VersionHistory({ resumeId }: Props) {
               >
                 <div>
                   <p className="font-medium text-gray-800">
-                    Version {version.version_number}
+                    版本 {version.version_number}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {new Date(version.created_at).toLocaleString()}
+                    {new Date(version.created_at).toLocaleString('zh-CN')}
                   </p>
                 </div>
                 <button
                   onClick={() => handleRestore(version.id)}
                   className="text-blue-600 hover:text-blue-800 text-sm"
                 >
-                  Restore
+                  恢复
                 </button>
               </div>
             ))}

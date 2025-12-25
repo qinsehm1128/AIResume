@@ -50,7 +50,7 @@ export default function ChatPanel({ resumeId }: Props) {
     } catch (error) {
       addMessage({
         role: 'assistant',
-        content: 'Sorry, an error occurred. Please try again.',
+        content: '抱歉，发生了错误，请重试。',
       });
     } finally {
       setLoading(false);
@@ -67,20 +67,20 @@ export default function ChatPanel({ resumeId }: Props) {
   return (
     <div className="flex flex-col h-full bg-white rounded-lg shadow-md">
       <div className="p-4 border-b">
-        <h2 className="font-semibold text-gray-800">AI Assistant</h2>
+        <h2 className="font-semibold text-gray-800">AI 助手</h2>
         {focusedSectionId && (
-          <p className="text-xs text-blue-600">Focused: {focusedSectionId}</p>
+          <p className="text-xs text-blue-600">当前选中：{focusedSectionId}</p>
         )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
           <div className="text-center text-gray-400 py-8">
-            <p className="mb-4">Start a conversation with AI to edit your resume</p>
+            <p className="mb-4">与 AI 对话来编辑你的简历</p>
             <div className="text-sm space-y-2">
-              <p>"Help me write a professional summary"</p>
-              <p>"Polish my work experience descriptions"</p>
-              <p>"Change the theme to classic black"</p>
+              <p>"帮我写一段专业的个人简介"</p>
+              <p>"润色我的工作经历描述"</p>
+              <p>"把主题换成经典黑色"</p>
             </div>
           </div>
         )}
@@ -123,7 +123,7 @@ export default function ChatPanel({ resumeId }: Props) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
+            placeholder="输入消息..."
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={2}
             disabled={loading}
@@ -133,7 +133,7 @@ export default function ChatPanel({ resumeId }: Props) {
             disabled={loading || !input.trim()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
-            Send
+            发送
           </button>
         </div>
       </div>

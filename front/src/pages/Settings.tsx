@@ -22,7 +22,7 @@ export default function Settings() {
         setModelName(config.model_name);
       }
     } catch (error) {
-      console.error('Failed to load config:', error);
+      console.error('加载配置失败:', error);
     }
   };
 
@@ -37,10 +37,10 @@ export default function Settings() {
         api_key: apiKey || undefined,
         model_name: modelName,
       });
-      setMessage('Settings saved successfully!');
+      setMessage('保存成功！');
       setApiKey('');
     } catch {
-      setMessage('Failed to save settings');
+      setMessage('保存失败，请重试');
     } finally {
       setLoading(false);
     }
@@ -50,12 +50,12 @@ export default function Settings() {
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-2xl mx-auto px-4">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">LLM Settings</h1>
+          <h1 className="text-2xl font-bold text-gray-800">LLM 设置</h1>
           <button
             onClick={() => navigate('/')}
             className="text-blue-600 hover:text-blue-800"
           >
-            Back to Home
+            返回首页
           </button>
         </div>
 
@@ -63,7 +63,7 @@ export default function Settings() {
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="block text-gray-700 mb-2">
-                Base URL (OpenAI Compatible)
+                API 地址（OpenAI 兼容）
               </label>
               <input
                 type="url"
@@ -73,12 +73,12 @@ export default function Settings() {
                 placeholder="https://api.openai.com/v1"
               />
               <p className="text-sm text-gray-500 mt-1">
-                Leave empty for default OpenAI API
+                留空则使用默认 OpenAI API 地址
               </p>
             </div>
 
             <div className="mb-4">
-              <label className="block text-gray-700 mb-2">API Key</label>
+              <label className="block text-gray-700 mb-2">API 密钥</label>
               <input
                 type="password"
                 value={apiKey}
@@ -87,31 +87,28 @@ export default function Settings() {
                 placeholder="sk-..."
               />
               <p className="text-sm text-gray-500 mt-1">
-                Enter new key to update (leave empty to keep existing)
+                输入新密钥以更新（留空保持现有密钥）
               </p>
             </div>
 
             <div className="mb-6">
-              <label className="block text-gray-700 mb-2">Model Name</label>
-              <select
+              <label className="block text-gray-700 mb-2">模型名称</label>
+              <input
+                type="text"
                 value={modelName}
                 onChange={(e) => setModelName(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="gpt-4o">GPT-4o</option>
-                <option value="gpt-4o-mini">GPT-4o Mini</option>
-                <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                <option value="deepseek-chat">DeepSeek Chat</option>
-                <option value="claude-3-opus">Claude 3 Opus</option>
-                <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-              </select>
+                placeholder="gpt-4o, deepseek-chat, claude-3-sonnet 等"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                输入模型名称，如 gpt-4o、gpt-4o-mini、deepseek-chat、claude-3-sonnet 等
+              </p>
             </div>
 
             {message && (
               <p
                 className={`mb-4 ${
-                  message.includes('success') ? 'text-green-600' : 'text-red-600'
+                  message.includes('成功') ? 'text-green-600' : 'text-red-600'
                 }`}
               >
                 {message}
@@ -123,7 +120,7 @@ export default function Settings() {
               disabled={loading}
               className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
             >
-              {loading ? 'Saving...' : 'Save Settings'}
+              {loading ? '保存中...' : '保存设置'}
             </button>
           </form>
         </div>
