@@ -235,8 +235,19 @@ function ASTNodeRenderer({
 
   // 处理循环渲染
   if (node.repeat) {
-    const repeatData = getValueByPath(data, node.repeat);
-    if (Array.isArray(repeatData)) {
+    let repeatData: unknown[];
+
+    // 检查是否是类型过滤的 repeat，如 "sections.skill", "sections.education"
+    const sectionTypeMatch = node.repeat.match(/^sections\.(\w+)$/);
+    if (sectionTypeMatch) {
+      const sectionType = sectionTypeMatch[1];
+      const allSections = data.sections || [];
+      repeatData = allSections.filter((s) => s.type === sectionType);
+    } else {
+      repeatData = getValueByPath(data, node.repeat) as unknown[];
+    }
+
+    if (Array.isArray(repeatData) && repeatData.length > 0) {
       return (
         <>
           {repeatData.map((item, index) => {

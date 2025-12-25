@@ -45,6 +45,7 @@ async def chat(request: ChatRequestWithContext):
         drag_context=drag_context,
         edit_mode=request.edit_mode,
         images=images,
+        template_ast=resume.template_ast,  # Pass template_ast
         thread_id=f"resume-{request.resume_id}",
     )
 
@@ -52,6 +53,11 @@ async def chat(request: ChatRequestWithContext):
     resume.resume_data = result["resume_data"]
     resume.layout_config = result["layout_config"]
     resume.messages = result["messages"]
+
+    # Update template_ast if modified
+    if result.get("template_ast"):
+        resume.template_ast = result["template_ast"]
+
     await resume.save()
 
     # Determine action type
@@ -60,10 +66,13 @@ async def chat(request: ChatRequestWithContext):
         action_type = "layout_update"
     elif result["intent"] == "content":
         action_type = "content_update"
+    elif result["intent"] == "template":
+        action_type = "template_update"
 
     return ChatResponse(
         message=result["message"],
         resume_data=ResumeData(**result["resume_data"]),
         layout_config=LayoutConfig(**result["layout_config"]),
+        template_ast=result.get("template_ast"),  # Return updated template_ast
         action_type=action_type,
     )

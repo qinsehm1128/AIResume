@@ -11,6 +11,7 @@ class ResumeGraphState(TypedDict):
     messages: list[dict]
     current_resume_data: dict
     layout_config: dict
+    template_ast: dict | None  # 模板 AST 结构
     ui_context: dict
     drag_context: dict | None
     edit_mode: str
@@ -157,32 +158,52 @@ Return ONLY valid JSON."""
 TEMPLATE_PROMPT = """You are a template structure editor for resume templates.
 The user wants to modify the template AST structure.
 
+Current template AST:
+{template_ast}
+
 Current dragged node: {drag_context}
 
 User request: {message}
 
-Available operations:
-- Modify node styles (fonts, colors, spacing, etc.)
-- Change node layout (flex, grid, alignment)
-- Update node content template
-- Reorganize node structure
+## Understanding the Template AST Structure:
+The AST (Abstract Syntax Tree) defines the visual structure of the resume. Each node has:
+- id: Unique identifier
+- tag: HTML tag (div, span, h1, h2, p, etc.)
+- styles: CSS styles in snake_case (font_size, background_color, padding, etc.)
+- content: Text content with variable bindings like {{{{profile.name}}}}
+- children: Child nodes
+- repeat: Data path for loops (e.g., "sections.experience", "sections.skill")
+- class_name: CSS class name
 
-Respond with a JSON object:
+## Available Operations:
+1. update_styles: Modify node styles (fonts, colors, spacing, borders, etc.)
+2. update_content: Change content template or variable bindings
+3. add_child: Add a new child node
+4. remove_node: Remove a node by id
+5. reorder: Change order of children
+
+## Style Properties (use snake_case):
+- font_size, font_weight, font_family
+- color, background_color
+- padding, margin (can use padding_top, padding_left, etc.)
+- border, border_radius, border_left
+- display, flex_direction, justify_content, align_items
+- gap, width, height
+
+Respond with a JSON object containing the COMPLETE UPDATED AST:
 {{
   "message": "Your response in Chinese explaining what was changed",
-  "ast_updates": [
-    {{
-      "node_id": "the node id to update",
-      "operation": "update_style" | "update_content" | "move" | "delete",
-      "changes": {{...}}  // specific changes to apply
-    }}
-  ]
+  "template_ast": {{
+    "root": {{...complete updated AST root node...}}
+  }}
 }}
+
+IMPORTANT: You must return the complete template_ast with all modifications applied, not just the changes.
 
 If no changes needed or operation is not supported:
 {{
   "message": "说明为什么无法执行操作",
-  "ast_updates": []
+  "template_ast": null
 }}
 
 Return ONLY valid JSON."""
@@ -375,11 +396,14 @@ async def template_node(state: ResumeGraphState) -> ResumeGraphState:
     last_message = state["messages"][-1]["content"] if state["messages"] else ""
     drag_context = state.get("drag_context")
     drag_str = json.dumps(drag_context, ensure_ascii=False) if drag_context else "none"
+    template_ast = state.get("template_ast")
+    template_ast_str = json.dumps(template_ast, ensure_ascii=False, indent=2) if template_ast else "null"
 
     messages = [
         SystemMessage(content="You are a template structure editor. Output only valid JSON. Respond in Chinese."),
         HumanMessage(
             content=TEMPLATE_PROMPT.format(
+                template_ast=template_ast_str,
                 drag_context=drag_str,
                 message=last_message,
             )
@@ -399,11 +423,11 @@ async def template_node(state: ResumeGraphState) -> ResumeGraphState:
         result = json.loads(content.strip())
         state["response"] = result.get("message", "模板结构已更新。")
 
-        # Note: AST updates would be applied here if we had template_ast in state
-        # For now, we just return the message
-        ast_updates = result.get("ast_updates", [])
-        if ast_updates:
-            state["response"] += f"\n\n（检测到 {len(ast_updates)} 个 AST 更新请求，请在模板设计器中应用）"
+        # Apply template_ast updates
+        new_template_ast = result.get("template_ast")
+        if new_template_ast and isinstance(new_template_ast, dict) and "root" in new_template_ast:
+            state["template_ast"] = new_template_ast
+            state["response"] += "\n\n✅ 模板已更新，预览已刷新。"
 
     except json.JSONDecodeError:
         state["response"] = "无法处理模板更改，请重试。"
@@ -503,6 +527,7 @@ async def process_message(
     drag_context: dict | None = None,
     edit_mode: str = "content",
     images: list[dict] | None = None,
+    template_ast: dict | None = None,
     thread_id: str = "default",
 ) -> dict:
     """Process a user message through the graph"""
@@ -515,6 +540,7 @@ async def process_message(
         "messages": new_messages,
         "current_resume_data": resume_data,
         "layout_config": layout_config,
+        "template_ast": template_ast,
         "ui_context": {"focused_section_id": focused_section_id},
         "drag_context": drag_context,
         "edit_mode": edit_mode,
@@ -535,6 +561,7 @@ async def process_message(
             "message": result["response"],
             "resume_data": result["current_resume_data"],
             "layout_config": result["layout_config"],
+            "template_ast": result.get("template_ast"),
             "messages": result["messages"],
             "intent": result["intent"],
         }
@@ -544,6 +571,7 @@ async def process_message(
             "message": f"处理消息时出错：{str(e)[:100]}",
             "resume_data": resume_data,
             "layout_config": layout_config,
+            "template_ast": template_ast,
             "messages": new_messages + [{"role": "assistant", "content": f"处理消息时出错：{str(e)[:100]}"}],
             "intent": "error",
         }
