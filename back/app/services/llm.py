@@ -36,4 +36,5 @@ async def get_llm_client() -> Optional[ChatOpenAI]:
         base_url=normalized_url,
         model=model_name,
         temperature=0.7,
+        max_tokens=8192,  # 确保有足够的 token 生成完整的 JSON
     )
