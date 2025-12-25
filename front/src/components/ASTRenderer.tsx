@@ -1,9 +1,11 @@
 import { useMemo, useState, useCallback } from 'react';
-import type { ASTNode, ASTNodeStyle, ResumeData, DraggedNode } from '../types';
+import type { ASTNode, ASTNodeStyle, ResumeData, DraggedNode, SectionData } from '../types';
 
 interface Props {
   node: ASTNode;
   data: ResumeData;
+  repeatItem?: SectionData;  // 当前循环的 section 项
+  repeatIndex?: number;      // 当前循环索引
   onNodeDragStart?: (node: DraggedNode) => void;
   onNodeClick?: (nodeId: string) => void;
   selectedNodeId?: string;
@@ -28,12 +30,102 @@ function convertStyles(styles?: ASTNodeStyle): React.CSSProperties {
   return result as React.CSSProperties;
 }
 
-// 解析变量引用 {{variable}}
-function resolveContent(content: string | undefined, data: ResumeData): string {
+// 根据路径获取数据（支持数组索引）
+function getValueByPath(obj: unknown, path: string): unknown {
+  if (!obj || !path) return '';
+
+  // 处理数组索引，如 sections[0].content.title
+  const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.');
+  let current: unknown = obj;
+
+  for (const part of parts) {
+    if (current === null || current === undefined) return '';
+    if (typeof current !== 'object') return '';
+
+    // 检查是否是数组索引
+    const arrayIndex = parseInt(part, 10);
+    if (!isNaN(arrayIndex) && Array.isArray(current)) {
+      current = current[arrayIndex];
+    } else {
+      current = (current as Record<string, unknown>)[part];
+    }
+  }
+
+  return current;
+}
+
+// 解析变量引用 {{variable}}，支持 section 上下文
+function resolveContent(
+  content: string | undefined,
+  data: ResumeData,
+  repeatItem?: SectionData,
+  repeatIndex?: number
+): string {
   if (!content) return '';
 
-  return content.replace(/\{\{([^}]+)\}\}/g, (_, path: string) => {
-    const value = getValueByPath(data, path.trim());
+  return content.replace(/\{\{([^}]+)\}\}/g, (match, path: string) => {
+    const trimmedPath = path.trim();
+
+    // 处理 section 相关的路径（当在 repeat 上下文中）
+    if (repeatItem !== undefined) {
+      // 支持 item.xxx 语法（当前循环项）
+      if (trimmedPath.startsWith('item.')) {
+        const itemPath = trimmedPath.slice(5);
+        const value = getValueByPath(repeatItem, itemPath);
+        if (Array.isArray(value)) {
+          return value.join(', ');
+        }
+        return String(value || '');
+      }
+
+      // 支持 section.xxx 语法
+      if (trimmedPath.startsWith('section.')) {
+        const sectionPath = trimmedPath.slice(8);
+        const value = getValueByPath(repeatItem, sectionPath);
+        if (Array.isArray(value)) {
+          return value.join(', ');
+        }
+        return String(value || '');
+      }
+
+      // 支持 sections[].xxx 或 sections[index].xxx 语法
+      const sectionMatch = trimmedPath.match(/^sections\[\d*\]\.(.+)$/);
+      if (sectionMatch) {
+        const fieldPath = sectionMatch[1];
+        const value = getValueByPath(repeatItem, fieldPath);
+        if (Array.isArray(value)) {
+          return value.join(', ');
+        }
+        return String(value || '');
+      }
+
+      // 支持直接访问 content.xxx
+      if (trimmedPath.startsWith('content.')) {
+        const contentPath = trimmedPath.slice(8);
+        const value = getValueByPath(repeatItem.content, contentPath);
+        if (Array.isArray(value)) {
+          return value.join(', ');
+        }
+        return String(value || '');
+      }
+
+      // 支持 type, id 等直接属性
+      if (['type', 'id'].includes(trimmedPath)) {
+        return String((repeatItem as unknown as Record<string, unknown>)[trimmedPath] || '');
+      }
+
+      // 尝试直接从 repeatItem 获取
+      const directValue = getValueByPath(repeatItem, trimmedPath);
+      if (directValue !== '' && directValue !== undefined) {
+        if (Array.isArray(directValue)) {
+          return directValue.join(', ');
+        }
+        return String(directValue);
+      }
+    }
+
+    // 普通路径解析
+    const value = getValueByPath(data, trimmedPath);
     if (Array.isArray(value)) {
       return value.join(', ');
     }
@@ -41,24 +133,41 @@ function resolveContent(content: string | undefined, data: ResumeData): string {
   });
 }
 
-// 根据路径获取数据
-function getValueByPath(obj: Record<string, unknown>, path: string): unknown {
-  const parts = path.split('.');
-  let current: unknown = obj;
+// 递归更新节点及其子节点的内容路径
+function updateNodePaths(node: ASTNode, repeatPath: string, index: number): ASTNode {
+  const updatedNode = { ...node };
 
-  for (const part of parts) {
-    if (current === null || current === undefined) return '';
-    if (typeof current !== 'object') return '';
-    current = (current as Record<string, unknown>)[part];
+  // 更新当前节点的 content
+  if (updatedNode.content) {
+    updatedNode.content = updatedNode.content
+      .replace(new RegExp(`\\{\\{${repeatPath}\\[\\]`, 'g'), `{{${repeatPath}[${index}]`)
+      .replace(new RegExp(`\\{\\{${repeatPath}\\[\\d*\\]`, 'g'), `{{${repeatPath}[${index}]`);
   }
 
-  return current;
+  // 更新 data_path
+  if (updatedNode.data_path?.startsWith(`${repeatPath}[`)) {
+    updatedNode.data_path = updatedNode.data_path.replace(
+      new RegExp(`^${repeatPath}\\[\\d*\\]`),
+      `${repeatPath}[${index}]`
+    );
+  }
+
+  // 递归更新子节点
+  if (updatedNode.children) {
+    updatedNode.children = updatedNode.children.map((child) =>
+      updateNodePaths(child, repeatPath, index)
+    );
+  }
+
+  return updatedNode;
 }
 
 // 渲染单个节点
 function ASTNodeRenderer({
   node,
   data,
+  repeatItem,
+  repeatIndex,
   onNodeDragStart,
   onNodeClick,
   selectedNodeId,
@@ -121,8 +230,8 @@ function ASTNodeRenderer({
 
   // 解析内容
   const resolvedContent = useMemo(() => {
-    return resolveContent(node.content, data);
-  }, [node.content, data]);
+    return resolveContent(node.content, data, repeatItem, repeatIndex);
+  }, [node.content, data, repeatItem, repeatIndex]);
 
   // 处理循环渲染
   if (node.repeat) {
@@ -130,37 +239,42 @@ function ASTNodeRenderer({
     if (Array.isArray(repeatData)) {
       return (
         <>
-          {repeatData.map((item, index) => (
-            <ASTNodeRenderer
-              key={`${node.id}-${index}`}
-              node={{
-                ...node,
-                id: `${node.id}-${index}`,
-                repeat: undefined,
-                content: node.content?.replace(
-                  new RegExp(`\\{\\{${node.repeat}\\[\\]`, 'g'),
-                  `{{${node.repeat}[${index}]`
-                ),
-              }}
-              data={data}
-              onNodeDragStart={onNodeDragStart}
-              onNodeClick={onNodeClick}
-              selectedNodeId={selectedNodeId}
-              editable={editable}
-              depth={depth}
-            />
-          ))}
+          {repeatData.map((item, index) => {
+            // 更新节点及其所有子节点的路径
+            const updatedNode = updateNodePaths(
+              { ...node, id: `${node.id}-${index}`, repeat: undefined },
+              node.repeat!,
+              index
+            );
+
+            return (
+              <ASTNodeRenderer
+                key={`${node.id}-${index}`}
+                node={updatedNode}
+                data={data}
+                repeatItem={item as SectionData}
+                repeatIndex={index}
+                onNodeDragStart={onNodeDragStart}
+                onNodeClick={onNodeClick}
+                selectedNodeId={selectedNodeId}
+                editable={editable}
+                depth={depth}
+              />
+            );
+          })}
         </>
       );
     }
   }
 
-  // 渲染子节点
+  // 渲染子节点（传递 repeatItem 上下文）
   const children = node.children?.map((child, index) => (
     <ASTNodeRenderer
       key={child.id || `${node.id}-child-${index}`}
       node={child}
       data={data}
+      repeatItem={repeatItem}
+      repeatIndex={repeatIndex}
       onNodeDragStart={onNodeDragStart}
       onNodeClick={onNodeClick}
       selectedNodeId={selectedNodeId}
@@ -225,7 +339,7 @@ export default function ASTRenderer({
   onNodeClick,
   selectedNodeId,
   editable = true,
-}: Props) {
+}: Omit<Props, 'repeatItem' | 'repeatIndex'>) {
   return (
     <ASTNodeRenderer
       node={node}
