@@ -32,7 +32,7 @@ export default function Editor() {
       const resume = await getResume(resumeId);
       setCurrentResume(resume);
     } catch (error) {
-      console.error('Failed to load resume:', error);
+      console.error('加载简历失败:', error);
       navigate('/');
     } finally {
       setLoading(false);
@@ -48,7 +48,7 @@ export default function Editor() {
         layout_config: currentResume.layout_config,
       });
     } catch (error) {
-      console.error('Failed to save resume:', error);
+      console.error('保存简历失败:', error);
     } finally {
       setSaving(false);
     }
@@ -63,8 +63,8 @@ export default function Editor() {
       const resumeData = await uploadDocument(file);
       updateResumeData(resumeData);
     } catch (error) {
-      console.error('Failed to upload document:', error);
-      alert('Failed to parse document. Please try again.');
+      console.error('上传文档失败:', error);
+      alert('解析文档失败，请重试');
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -79,19 +79,19 @@ export default function Editor() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `resume-${resumeId}.pdf`;
+      a.download = `简历-${resumeId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Failed to export PDF:', error);
-      alert('Failed to export PDF. Please try again.');
+      console.error('导出 PDF 失败:', error);
+      alert('导出 PDF 失败，请重试');
     }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-gray-500">Loading...</p>
+        <p className="text-gray-500">加载中...</p>
       </div>
     );
   }
@@ -99,14 +99,14 @@ export default function Editor() {
   if (!currentResume) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-red-500">Resume not found</p>
+        <p className="text-red-500">简历不存在</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      {/* Header */}
+      {/* 顶部导航栏 */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -137,13 +137,13 @@ export default function Editor() {
               className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition flex items-center gap-2"
             >
               {uploading ? (
-                'Uploading...'
+                '上传中...'
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
-                  Upload
+                  上传文档
                 </>
               )}
             </button>
@@ -155,7 +155,7 @@ export default function Editor() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Export PDF
+              导出 PDF
             </button>
 
             <button
@@ -163,15 +163,15 @@ export default function Editor() {
               disabled={saving}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? '保存中...' : '保存'}
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* 主要内容区域 */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left: Resume Preview */}
+        {/* 左侧: 简历预览 */}
         <div className="flex-1 overflow-y-auto p-6">
           <ResumePreview
             data={currentResume.resume_data}
@@ -180,7 +180,7 @@ export default function Editor() {
           />
         </div>
 
-        {/* Right: Chat Panel */}
+        {/* 右侧: AI 对话面板 */}
         <div className="w-96 border-l bg-gray-50 flex flex-col">
           <ChatPanel resumeId={resumeId} />
         </div>
