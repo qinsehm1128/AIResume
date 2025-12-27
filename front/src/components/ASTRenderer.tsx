@@ -255,7 +255,11 @@ function ASTNodeRenderer({
 
   // 解析内容
   const resolvedContent = useMemo(() => {
-    return resolveContent(node.content, data, repeatItem, repeatIndex);
+    const result = resolveContent(node.content, data, repeatItem, repeatIndex);
+    if (repeatItem && node.content) {
+      console.log(`[ASTRenderer] Resolving content for ${node.id}: "${node.content}" -> "${result}"`);
+    }
+    return result;
   }, [node.content, data, repeatItem, repeatIndex]);
 
   // 处理循环渲染
@@ -289,6 +293,18 @@ function ASTNodeRenderer({
     // 如果有数据则渲染循环
     if (Array.isArray(repeatData) && repeatData.length > 0) {
       console.log(`[ASTRenderer] Rendering ${repeatData.length} items for "${node.repeat}", node children:`, node.children?.length || 0);
+      console.log(`[ASTRenderer] Node structure:`, JSON.stringify({
+        id: node.id,
+        tag: node.tag,
+        content: node.content,
+        children: node.children?.map(c => ({
+          id: c.id,
+          tag: c.tag,
+          content: c.content,
+          childCount: c.children?.length || 0
+        }))
+      }, null, 2));
+      console.log(`[ASTRenderer] First item data:`, repeatData[0]);
       return (
         <>
           {repeatData.map((item, index) => {
