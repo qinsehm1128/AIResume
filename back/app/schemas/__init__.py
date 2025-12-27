@@ -3,6 +3,8 @@ from app.schemas.schemas import (
     AuthResponse,
     LLMConfigRequest,
     LLMConfigResponse,
+    LLMConfigUpdate,
+    SetActiveModelRequest,
     ResumeCreate,
     ResumeUpdate,
     ResumeResponse,
