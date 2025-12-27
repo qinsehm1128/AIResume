@@ -293,17 +293,15 @@ function ASTNodeRenderer({
     // 如果有数据则渲染循环
     if (Array.isArray(repeatData) && repeatData.length > 0) {
       console.log(`[ASTRenderer] Rendering ${repeatData.length} items for "${node.repeat}", node children:`, node.children?.length || 0);
-      console.log(`[ASTRenderer] Node structure:`, JSON.stringify({
-        id: node.id,
-        tag: node.tag,
-        content: node.content,
-        children: node.children?.map(c => ({
-          id: c.id,
-          tag: c.tag,
-          content: c.content,
-          childCount: c.children?.length || 0
-        }))
-      }, null, 2));
+
+      // 递归显示完整的子节点结构
+      const showNodeTree = (n: ASTNode, depth = 0): unknown => ({
+        id: n.id,
+        tag: n.tag,
+        content: n.content,
+        children: n.children?.map(c => showNodeTree(c, depth + 1))
+      });
+      console.log(`[ASTRenderer] Full node structure:`, JSON.stringify(showNodeTree(node), null, 2));
       console.log(`[ASTRenderer] First item data:`, repeatData[0]);
       return (
         <>
