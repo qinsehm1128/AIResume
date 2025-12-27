@@ -15,20 +15,40 @@ class AuthResponse(BaseModel):
 
 # LLM Config Schemas
 class LLMConfigRequest(BaseModel):
+    name: str = "默认配置"
     base_url: Optional[str] = None
     api_key: Optional[str] = None
     model_name: str = "gpt-4o"
+    available_models: List[str] = Field(default_factory=list)
+    is_active: bool = False
 
 
 class LLMConfigResponse(BaseModel):
     id: int
+    name: str
     base_url: Optional[str] = None
     model_name: str
+    available_models: List[str] = Field(default_factory=list)
+    is_active: bool
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class LLMConfigUpdate(BaseModel):
+    name: Optional[str] = None
+    base_url: Optional[str] = None
+    api_key: Optional[str] = None
+    model_name: Optional[str] = None
+    available_models: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+
+
+class SetActiveModelRequest(BaseModel):
+    config_id: int
+    model_name: str
 
 
 # Resume Data Schemas

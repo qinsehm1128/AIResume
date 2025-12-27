@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { sendChatMessageWithContext, uploadImage, type ImageData } from '../api/client';
+import { sendChatMessageWithContext, uploadImage, getActiveLLMConfig, setActiveModel, type ImageData } from '../api/client';
 import { useResumeStore } from '../store';
-import type { ChatMessage, DraggedNode } from '../types';
+import type { ChatMessage, DraggedNode, LLMConfig } from '../types';
 
 interface Props {
   resumeId: number;
@@ -20,6 +20,8 @@ export default function ChatPanel({ resumeId }: Props) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [activeConfig, setActiveConfig] = useState<LLMConfig | null>(null);
+  const [showModelSelector, setShowModelSelector] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -40,6 +42,30 @@ export default function ChatPanel({ resumeId }: Props) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    loadActiveConfig();
+  }, []);
+
+  const loadActiveConfig = async () => {
+    try {
+      const config = await getActiveLLMConfig();
+      setActiveConfig(config);
+    } catch (error) {
+      console.error('加载配置失败:', error);
+    }
+  };
+
+  const handleModelChange = async (modelName: string) => {
+    if (!activeConfig) return;
+    try {
+      const updated = await setActiveModel(activeConfig.id, modelName);
+      setActiveConfig(updated);
+      setShowModelSelector(false);
+    } catch (error) {
+      console.error('切换模型失败:', error);
+    }
+  };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -248,6 +274,38 @@ export default function ChatPanel({ resumeId }: Props) {
             ))}
           </div>
         </div>
+
+        {/* 模型选择器 */}
+        {activeConfig && (
+          <div className="relative mb-2">
+            <button
+              onClick={() => setShowModelSelector(!showModelSelector)}
+              className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-800 bg-gray-100 px-2 py-1 rounded"
+            >
+              <span className="font-medium">{activeConfig.name}:</span>
+              <span className="text-blue-600">{activeConfig.model_name}</span>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showModelSelector && activeConfig.available_models.length > 0 && (
+              <div className="absolute top-full left-0 mt-1 bg-white border rounded-lg shadow-lg z-50 min-w-[150px]">
+                {activeConfig.available_models.map((model) => (
+                  <button
+                    key={model}
+                    onClick={() => handleModelChange(model)}
+                    className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg ${
+                      model === activeConfig.model_name ? 'bg-blue-50 text-blue-600' : ''
+                    }`}
+                  >
+                    {model}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="space-y-1">
           {focusedSectionId && (

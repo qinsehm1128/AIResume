@@ -5,9 +5,12 @@ import json
 
 class LLMConfig(models.Model):
     id = fields.IntField(pk=True)
+    name = fields.CharField(max_length=100, default="默认配置")  # 配置名称
     base_url = fields.CharField(max_length=500, null=True)
     api_key = fields.CharField(max_length=500, null=True)
-    model_name = fields.CharField(max_length=100, default="gpt-4o")
+    model_name = fields.CharField(max_length=100, default="gpt-4o")  # 默认模型
+    available_models = fields.JSONField(default=list)  # 该 API 下可用的模型列表
+    is_active = fields.BooleanField(default=False)  # 是否为当前激活的配置
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
